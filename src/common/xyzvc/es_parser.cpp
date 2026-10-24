@@ -55,6 +55,35 @@ es_parser_c::set_normalize_parameter_sets(bool normalize) {
 }
 
 void
+es_parser_c::set_add_changed_parameter_sets(bool add) {
+  m_add_changed_parameter_sets = add;
+}
+
+void
+es_parser_c::remember_configuration_record_parameter_sets() {
+  if (!m_configuration_record_parameter_sets.empty())
+    return;
+
+  for (auto const *list : { &m_vps_list, &m_sps_list, &m_pps_list })
+    for (auto const &nalu : *list)
+      m_configuration_record_parameter_sets.push_back(nalu->clone());
+}
+
+bool
+es_parser_c::parameter_sets_differ_from_configuration_record()
+  const {
+  if (m_configuration_record_parameter_sets.empty())
+    return false;
+
+  for (auto const *list : { &m_vps_list, &m_sps_list, &m_pps_list })
+    for (auto const &nalu : *list)
+      if (std::none_of(m_configuration_record_parameter_sets.begin(), m_configuration_record_parameter_sets.end(), [&nalu](auto const &recorded) { return *recorded == *nalu; }))
+        return true;
+
+  return false;
+}
+
+void
 es_parser_c::maybe_dump_raw_data(uint8_t const *buffer,
                                  std::size_t size) {
   static debugging_option_c s_dump_raw_data{fmt::format("{0}_es_parser_dump_raw_data", m_debug_type)};
@@ -279,7 +308,7 @@ es_parser_c::add_nalu_to_pending_frame_data(memory_cptr const &nalu) {
 }
 
 void
-es_parser_c::add_parameter_sets_to_extra_data() {
+es_parser_c::add_parameter_sets_to_extra_data(bool with_initial_extra_data) {
   std::unordered_map<uint32_t, bool> is_in_extra_data;
 
   for (auto const &data : m_extra_data_pre) {
@@ -300,19 +329,27 @@ es_parser_c::add_parameter_sets_to_extra_data() {
   std::copy(m_sps_list.begin(), m_sps_list.end(), inserter);
   std::copy(m_pps_list.begin(), m_pps_list.end(), inserter);
 
-  for (auto const &data : m_extra_data_initial)
-    if (!is_in_extra_data[mtx::checksum::calculate_as_uint(mtx::checksum::algorithm_e::adler32, *data)])
-      inserter = data;
+  // the initial extra data: the SEI NALUs from the configuration record
+  if (with_initial_extra_data) {
+    for (auto const &data : m_extra_data_initial)
+      if (!is_in_extra_data[mtx::checksum::calculate_as_uint(mtx::checksum::algorithm_e::adler32, *data)])
+        inserter = data;
+
+    m_extra_data_initial.clear();
+  }
 
   std::copy(old_extra_data.begin(), old_extra_data.end(), inserter);
-
-  m_extra_data_initial.clear();
 }
 
 void
 es_parser_c::build_frame_data() {
+  // (add_parameter_sets_to_extra_data() adds none if the frame carries
+  // parameter sets itself)
   if (m_incomplete_frame.m_keyframe && m_normalize_parameter_sets)
     add_parameter_sets_to_extra_data();
+  // (only the parameter sets: not the configuration record's SEI NALUs)
+  else if (m_incomplete_frame.m_keyframe && m_add_changed_parameter_sets && parameter_sets_differ_from_configuration_record())
+    add_parameter_sets_to_extra_data(false);
 
   m_incomplete_frame.m_data_parts = std::move(m_extra_data_pre);
   m_incomplete_frame.m_data_parts.reserve(m_incomplete_frame.m_data_parts.size() + m_pending_frame_data.size() + 1);

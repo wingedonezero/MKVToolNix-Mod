@@ -21,8 +21,11 @@ class xtr_hevc_c: public xtr_avc_c {
 protected:
   memory_cptr m_decoded_codec_private;
   debugging_option_c m_debug{"xtr_hevc|hevc"};
-  bool m_first_nalu{true}, m_normalize_parameter_sets{true};
+  bool m_first_nalu{true}, m_normalize_parameter_sets{};
   mtx::hevc::es_parser_c m_parser;
+  // the NALUs in CodecPrivate (VPS, SPS, PPS, SEI), written with the first
+  // frame (m_first_frame)
+  std::vector<memory_cptr> m_codec_private_nalus;
 
 public:
   xtr_hevc_c(const std::string &codec_id, int64_t tid, track_spec_t &tspec);
@@ -39,5 +42,5 @@ public:
 
 protected:
   virtual void flush_frames();
-  virtual void unwrap_write_hevcc(bool skip_prefix_sei);
+  virtual void write_first_frame(uint8_t *buffer, std::size_t size) override;
 };

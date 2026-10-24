@@ -70,6 +70,9 @@ void
 es_parser_c::maybe_set_configuration_record_ready() {
   if (!m_configuration_record_ready && !m_vps_info_list.empty() && !m_sps_info_list.empty() && !m_pps_info_list.empty()) {
     m_configuration_record_ready = true;
+    // a stream without a container configuration record: the record is
+    // made from these
+    remember_configuration_record_parameter_sets();
     flush_unhandled_nalus();
   }
 
@@ -777,6 +780,8 @@ es_parser_c::set_configuration_record(memory_cptr const &bytes) {
 
   for (auto const &nalu : hevcc.m_sei_list)
     handle_sei_nalu(nalu, extra_data_position_e::initial);
+
+  remember_configuration_record_parameter_sets();
 }
 
 void

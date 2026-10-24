@@ -65,6 +65,13 @@ protected:
   std::deque<std::pair<memory_cptr, uint64_t>> m_unhandled_nalus;
 
   bool m_first_cleanup{true}, m_simple_picture_order{}, m_discard_actual_frames{}, m_normalize_parameter_sets{};
+  // Put the active parameter sets in front of key frames while they differ
+  // from the configuration record's (e.g. the second of two appended
+  // encodes), so that a decoder starting at such a key frame has them. The
+  // configuration record's parameter sets, as they are when it is set or
+  // first complete:
+  bool m_add_changed_parameter_sets{};
+  std::vector<memory_cptr> m_configuration_record_parameter_sets;
 
   std::string const m_debug_type;
   debugging_option_c m_debug_keyframe_detection, m_debug_nalu_types, m_debug_timestamps, m_debug_sps_info, m_debug_statistics;
@@ -107,6 +114,7 @@ public:
   void set_next_i_slice_is_key_frame();
 
   void set_normalize_parameter_sets(bool normalize = true);
+  void set_add_changed_parameter_sets(bool add = true);
 
   void set_nalu_size_length(int nalu_size_length);
   int get_nalu_size_length() const;
@@ -164,8 +172,10 @@ protected:
   void add_nalu_to_extra_data(memory_cptr const &nalu, extra_data_position_e position = extra_data_position_e::pre);
   void add_nalu_to_pending_frame_data(memory_cptr const &nalu);
   void add_nalu_to_unhandled_nalus(memory_cptr const &nalu, uint64_t nalu_pos);
-  void add_parameter_sets_to_extra_data();
+  void add_parameter_sets_to_extra_data(bool with_initial_extra_data = true);
   void build_frame_data();
+  void remember_configuration_record_parameter_sets();
+  bool parameter_sets_differ_from_configuration_record() const;
 
   virtual bool does_nalu_get_included_in_extra_data(memory_c const &nalu) const = 0;
 

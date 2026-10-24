@@ -93,4 +93,48 @@ TEST(AccessUnitDelimiters, HEVCFirstAlsoWhenParameterSetsArePutInFrontOfKeyFrame
   EXPECT_LT(1, key_frames_with_inserted_parameter_sets);
 }
 
+// the frames (by number) whose first NALUs are AUD + VPS
+std::vector<std::size_t>
+frames_with_parameter_sets(std::vector<std::vector<int>> const &frames) {
+  std::vector<std::size_t> numbers;
+  for (std::size_t idx = 0; idx < frames.size(); ++idx)
+    if ((frames[idx].size() > 1) && (frames[idx][1] == mtx::hevc::NALU_TYPE_VIDEO_PARAM))
+      numbers.push_back(idx);
+  return numbers;
+}
+
+TEST(HEVCParameterSets, LeftAsTheyAreWhileTheyEqualTheConfigurationRecord) {
+  mtx::hevc::es_parser_c parser;
+  parser.set_add_changed_parameter_sets(true);
+  auto frames = parse(parser, s_hevc, true);
+
+  ASSERT_EQ(25u, frames.size());
+  for (auto const &types : frames)
+    EXPECT_EQ(mtx::hevc::NALU_TYPE_ACCESS_UNIT, types.front());
+
+  // as in the stream: parameter sets in front of the first frame only
+  EXPECT_EQ(std::vector<std::size_t>{ 0 }, frames_with_parameter_sets(frames));
+}
+
+TEST(HEVCParameterSets, PutInFrontOfKeyFramesWhileTheyDifferFromTheConfigurationRecord) {
+  // two different encodes (25 frames each, a key frame every 6), each with
+  // its parameter sets in front of its first frame only, one after the other
+  mtx::hevc::es_parser_c parser;
+  parser.set_add_changed_parameter_sets(true);
+  auto frames = parse(parser, "tests/unit/data/video/two-encodes-headers-once.hevc", true);
+
+  ASSERT_EQ(50u, frames.size());
+  for (auto const &types : frames) {
+    ASSERT_FALSE(types.empty());
+    EXPECT_EQ(mtx::hevc::NALU_TYPE_ACCESS_UNIT, types.front());
+    // only parameter sets are added, no SEI from the configuration record
+    EXPECT_GE(1, std::count(types.begin(), types.end(), mtx::hevc::NALU_TYPE_PREFIX_SEI));
+  }
+
+  // the first encode as it is; every key frame of the second one (its
+  // parameter sets differ from the configuration record, made from the first
+  // encode's) with them in front, so that decoding can start there
+  EXPECT_EQ((std::vector<std::size_t>{ 0, 25, 31, 37, 43, 49 }), frames_with_parameter_sets(frames));
+}
+
 }

@@ -63,13 +63,14 @@ get_list() {
                                                                  Y("This option forces mkvmerge to treat all of those I slices as key frames.") });
   hacks.emplace_back("append_and_split_flac",              svec{ Y("Enable appending and splitting FLAC tracks."),
                                                                  Y("The resulting tracks will be broken: the official FLAC tools will not be able to decode them and seeking will not work as expected.") });
-  hacks.emplace_back("dont_normalize_parameter_sets",      svec{ Y("Normally the HEVC/H.265 code in mkvmerge and mkvextract normalizes parameter sets by prefixing all key frames with all currently active parameter sets and removes duplicates that might already be present."),
+  hacks.emplace_back("dont_normalize_parameter_sets",      svec{ Y("Normally the HEVC/H.265 code in mkvmerge and mkvextract prefixes key frames with the currently active parameter sets while they differ from the ones in CodecPrivate (e.g. in the second of two appended files) and the key frame does not carry them itself."),
                                                                  Y("If this hack is enabled, the code will leave the parameter sets as they are.") });
   hacks.emplace_back("keep_whitespaces_in_text_subtitles", svec{ Y("Normally spaces & tabs are removed from the beginning & the end of each line in text subtitles."),
                                                                  Y("If this hack is enabled, they won't be removed.") });
   hacks.emplace_back("always_write_block_add_ids",         svec{ Y("If enabled, the BlockAddID element will be written even if it's set to its default value of 1.") });
   hacks.emplace_back("keep_dolby_vision_layers_separate",  svec{ Y("Prevents mkvmerge from looking for Dolby Vision Enhancement Layers stored in a separate track & combining them with the track containing the Dolby Vision Base Layer.") });
   hacks.emplace_back("keep_bsid_9_10_in_ac3_codec_id",     svec{ Y("Causes mkvmerge to use the codec IDs A_AC3/BSID9 & A_AC3/BSID10 instead of A_AC3 for AC-3 tracks with BSIDs of 9 or 10 like older versions of mkvmerge did.") });
+  hacks.emplace_back("normalize_parameter_sets",           svec{ Y("Causes the HEVC/H.265 code in mkvmerge and mkvextract to prefix all key frames with all currently active parameter sets and to remove duplicates that might already be present, as earlier versions did by default.") });
   hacks.emplace_back("cow",                                svec{ Y("No help available.") });
 
   return hacks;

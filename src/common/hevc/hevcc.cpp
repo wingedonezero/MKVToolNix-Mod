@@ -274,7 +274,10 @@ hevcc_c::pack() {
   mtx::bits::writer_c w;
 
   auto write_list = [&w](std::vector<memory_cptr> const &list, uint8_t nal_unit_type) {
-    w.put_bits(1, 1);
+    // array_completeness 0: NAL units of this type may be in the stream as
+    // well (ISO/IEC 14496-15: 1 means all are here and none are in the
+    // stream), as the frames keep the parameter sets they carry
+    w.put_bits(1, 0);
     w.put_bits(1, 0);
     w.put_bits(6, nal_unit_type);
     w.put_bits(16, list.size());
