@@ -4,7 +4,7 @@
 #
 #   ./build.sh            debug build    -> dist/debug/   (bin/, share/)
 #   ./build.sh release    release build  -> dist/release/
-#   ./build.sh test       debug build, then the unit tests and source checks
+#   ./build.sh test       debug build of the unit tests, then runs them
 #   ./build.sh deb        release build, then the packages mkvtoolnix and
 #                         mkvtoolnix-gui -> dist/deb/
 #   ./build.sh clean      removes build/ and dist/
@@ -38,8 +38,8 @@ need_file() {   # need_file <path pattern> <package>
 need_tool cc gcc;            need_tool c++ g++;           need_tool make make
 need_tool cmake cmake;       need_tool meson meson;       need_tool ninja ninja-build
 need_tool pkg-config pkg-config;  need_tool rsync rsync;  need_tool git git
-need_tool ruby ruby;         need_tool autoconf autoconf; need_tool m4 m4
-need_tool xsltproc xsltproc; need_tool po4a po4a;         need_tool msgfmt gettext
+need_tool autoconf autoconf; need_tool automake automake; need_tool m4 m4
+need_tool xsltproc xsltproc; need_tool gunzip gzip
 need_tool qmake6 qt6-base-dev-tools;  need_tool readelf binutils
 need_file /usr/share/xml/docbook/stylesheet/docbook-xsl docbook-xsl
 need_file /usr/include/boost/version.hpp libboost-dev
@@ -57,7 +57,7 @@ if [ -n "$missing" ]; then
 fi
 
 case $mode in
-    debug|release) exec make -f mk/main.mk dist MODE=$mode ;;
-    test)          exec make -f mk/main.mk test MODE=debug ;;
-    deb)           exec make -f mk/main.mk deb MODE=release ;;
+    debug|release) exec make -j"$(nproc)" -f mk/main.mk dist MODE=$mode ;;
+    test)          exec make -j"$(nproc)" -f mk/main.mk test MODE=debug ;;
+    deb)           exec make -j"$(nproc)" -f mk/main.mk deb MODE=release ;;
 esac

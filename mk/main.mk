@@ -2,14 +2,15 @@
 #
 #   build/<mode>/prefix/      the libraries from libs/, static, installed
 #   build/<mode>/libs/<name>/ each library's own build folder
-#   build/<mode>/mkvtoolnix/  a copy of the MKVToolNix source, built there
-#                             (rake builds in place; the source tree is
-#                             never written to)
-#   build/<mode>/stage/       `rake install` of that build (prefix /usr)
+#   build/<mode>/conf/ gen/ obj/ bin/
+#                             MKVToolNix's configure, generated sources,
+#                             objects, programs (mk/mkvtoolnix.mk)
+#   build/<mode>/stage/       the install (prefix /usr)
 #   dist/<mode>/              the programs and their data: bin/, share/
 #   dist/deb/                 the packages (./build.sh deb)
 #
-# Running it again rebuilds only what changed.
+# The source tree and libs/ are never written to. Running it again rebuilds
+# only what changed.
 
 MODE ?= debug
 ifeq ($(filter debug release,$(MODE)),)
@@ -39,4 +40,3 @@ all: dist
 include $(ROOT)/mk/libs.mk
 include $(ROOT)/mk/mkvtoolnix.mk
 include $(ROOT)/mk/deb.mk
-include $(ROOT)/mk/mtx.mk

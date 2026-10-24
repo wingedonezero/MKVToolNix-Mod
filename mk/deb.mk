@@ -11,7 +11,7 @@ MTX_VERSION  := $(shell sed -n '/^AC_INIT/{s/[^,]*,\[//;s/\].*//;p;}' $(ROOT)/co
 DEB_VERSION  := $(DEB_EPOCH):$(MTX_VERSION)-$(DEB_REVISION)
 DEB_MAINT    := $(shell git -C $(ROOT) config user.name) <$(shell git -C $(ROOT) config user.email)>
 
-deb: mtx-stage
+deb: mtx-install
 ifneq ($(MODE),release)
 	$(error the packages are made from the release build: make -f mk/main.mk deb MODE=release)
 endif
