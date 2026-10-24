@@ -74,6 +74,7 @@ protected:
   void browseOutputFolder();
   void removeSelectedFile();
   void showTreeContextMenu(QPoint const &pos);
+  // kind File: every item (checking: all but the tags)
   void setChecked(ItemKind kind, QString const &trackType, bool checked);
 
   void closeEvent(QCloseEvent *event) override;

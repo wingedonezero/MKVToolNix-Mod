@@ -93,7 +93,9 @@ MainWindow::setupUi() {
   layout->addWidget(inputBox, 1);
 
   struct entry_t { QString label; ItemKind kind; QString type; };
-  for (auto const &[label, kind, type] : { entry_t{ tr("All Tracks"),      ItemKind::Track,      QString{}     },
+  // "All": the tracks, chapters and attachments (as gMKVExtractGUI), not the tags
+  for (auto const &[label, kind, type] : { entry_t{ tr("All"),             ItemKind::File,       QString{}     },
+                                          entry_t{ tr("All Tracks"),       ItemKind::Track,      QString{}     },
                                           entry_t{ tr("Video Tracks"),     ItemKind::Track,      u"video"_s     },
                                           entry_t{ tr("Audio Tracks"),     ItemKind::Track,      u"audio"_s     },
                                           entry_t{ tr("Subtitle Tracks"),  ItemKind::Track,      u"subtitles"_s },
@@ -608,8 +610,9 @@ MainWindow::setChecked(ItemKind kind,
     auto const &file = m_files[fileItem->data(0, IndexRole).toInt()];
 
     for (int idx = 0, num = fileItem->childCount(); idx < num; ++idx) {
-      auto item = fileItem->child(idx);
-      if (static_cast<ItemKind>(item->data(0, KindRole).toInt()) != kind)
+      auto item     = fileItem->child(idx);
+      auto itemKind = static_cast<ItemKind>(item->data(0, KindRole).toInt());
+      if (kind == ItemKind::File ? checked && (itemKind == ItemKind::Tags) : itemKind != kind)
         continue;
       if ((kind == ItemKind::Track) && !trackType.isEmpty() && (file.info.tracks[item->data(0, IndexRole).toInt()].type != trackType))
         continue;
