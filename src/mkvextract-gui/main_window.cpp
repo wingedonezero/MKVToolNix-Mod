@@ -9,6 +9,7 @@
 */
 
 #include <QCheckBox>
+#include <QCloseEvent>
 #include <QComboBox>
 #include <QDirIterator>
 #include <QDragEnterEvent>
@@ -25,6 +26,7 @@
 #include <QPlainTextEdit>
 #include <QProgressBar>
 #include <QPushButton>
+#include <QSettings>
 #include <QStatusBar>
 #include <QTreeWidget>
 #include <QVBoxLayout>
@@ -128,6 +130,7 @@ MainWindow::setupUi() {
   auto actionsLayout = new QHBoxLayout{actionsBox};
   m_log              = new QPushButton{tr("Log..."), actionsBox};
   m_jobs             = new QPushButton{tr("Jobs..."), actionsBox};
+  m_popup            = new QCheckBox{tr("Popup"), actionsBox};
   m_chapterFormat    = new QComboBox{actionsBox};
   m_extractMode      = new QComboBox{actionsBox};
   m_addJobs          = new QPushButton{tr("Add Jobs"), actionsBox};
@@ -136,6 +139,7 @@ MainWindow::setupUi() {
   m_extractMode->addItems({ tr("Tracks"), tr("Tracks and timestamps"), tr("Timestamps only") });
   actionsLayout->addWidget(m_log);
   actionsLayout->addWidget(m_jobs);
+  actionsLayout->addWidget(m_popup);
   actionsLayout->addStretch();
   actionsLayout->addWidget(new QLabel{tr("Chapter"), actionsBox});
   actionsLayout->addWidget(m_chapterFormat);
@@ -159,8 +163,14 @@ MainWindow::setupUi() {
   statusBar()->addPermanentWidget(m_abortAll);
   statusBar()->addPermanentWidget(m_abort);
 
-  for (auto button : { m_log, m_jobs, m_addJobs, m_options, m_abortAll, m_abort })
+  m_popup->setToolTip(tr("Show a summary when an extraction is done"));
+  m_logDialog  = new LogDialog{this};
+  m_jobsDialog = new JobsDialog{this, m_queue};
+
+  for (auto button : { m_abortAll, m_abort })
     button->setEnabled(false);
+
+  loadSettings();
 
   connect(addButton,         &QPushButton::clicked,                  this, [this]() {
     auto paths = QFileDialog::getOpenFileNames(this, tr("Add input files"), {}, tr("Matroska files (*.mkv *.mka *.mks *.mk3d *.webm);;All files (*)"));
@@ -172,13 +182,18 @@ MainWindow::setupUi() {
   connect(m_outputFolder,    &QLineEdit::editingFinished,            this, &MainWindow::setOutputFolderOfSelectedFile);
   connect(m_browse,          &QPushButton::clicked,                  this, &MainWindow::browseOutputFolder);
   connect(m_extract,         &QPushButton::clicked,                  this, &MainWindow::extract);
+  connect(m_addJobs,         &QPushButton::clicked,                  this, &MainWindow::addJobs);
+  connect(m_jobsDialog->m_run, &QPushButton::clicked,                this, &MainWindow::runJobs);
+  connect(m_log,             &QPushButton::clicked,                  m_logDialog, &QDialog::show);
+  connect(m_jobs,            &QPushButton::clicked,                  this, [this]() { m_jobsDialog->refresh(); m_jobsDialog->show(); });
+  connect(m_options,         &QPushButton::clicked,                  this, &MainWindow::showOptions);
   connect(m_abort,           &QPushButton::clicked,                  m_runner, &Runner::abort);
   connect(m_abortAll,        &QPushButton::clicked,                  m_runner, &Runner::abortAll);
   connect(m_runner,          &Runner::jobStarted,                    this, &MainWindow::jobStarted);
   connect(m_runner,          &Runner::jobFinished,                   this, &MainWindow::jobFinished);
   connect(m_runner,          &Runner::finished,                      this, &MainWindow::allFinished);
   connect(m_runner,          &Runner::progress,                      m_progress, &QProgressBar::setValue);
-  connect(m_runner,          &Runner::line,                          this, [this](QString const &text) { m_logLines << text; });
+  connect(m_runner,          &Runner::line,                          this, [this](QString const &text) { m_logLines << text; m_logDialog->append(text); });
 
   showSelectedFile();
 }
@@ -247,28 +262,109 @@ MainWindow::extract() {
     return;
   }
 
+  run(m_running);
+}
+
+void
+MainWindow::addJobs() {
+  auto jobs = jobsForCheckedItems();
+  if (jobs.isEmpty()) {
+    QMessageBox::information(this, tr("Nothing to add"), tr("Check the tracks, chapters, attachments or tags to extract first."));
+    return;
+  }
+
+  m_queue << jobs;
+  m_jobsDialog->refresh();
+  statusBar()->showMessage(tr("%1 job(s) added, %2 in the queue.").arg(jobs.size()).arg(m_queue.size()), 5000);
+}
+
+void
+MainWindow::runJobs() {
+  if (m_runner->running())
+    return;
+  if (std::none_of(m_queue.begin(), m_queue.end(), [](auto const &job) { return job.status == Job::Status::Pending; })) {
+    QMessageBox::information(this, tr("No jobs"), tr("There are no pending jobs."));
+    return;
+  }
+
+  run(m_queue);
+}
+
+void
+MainWindow::run(QList<Job> &jobs) {
+  m_runList = &jobs;
   setRunning(true);
-  m_totalProgress->setRange(0, m_running.size());
+  m_totalProgress->setRange(0, std::count_if(jobs.begin(), jobs.end(), [](auto const &job) { return job.status == Job::Status::Pending; }));
   m_totalProgress->setValue(0);
-  m_runner->run(m_running);
+  m_runner->run(jobs);
+}
+
+void
+MainWindow::showOptions() {
+  OptionsDialog dialog{this, m_patterns};
+  if (dialog.exec() != QDialog::Accepted)
+    return;
+
+  m_patterns = dialog.patterns();
+  m_patterns.save();
+}
+
+void
+MainWindow::loadSettings() {
+  QSettings settings;
+  m_chapterFormat->setCurrentIndex(settings.value(u"chapterFormat"_s, 0).toInt());
+  m_extractMode->setCurrentIndex(settings.value(u"extractMode"_s, 0).toInt());
+  m_overwrite->setChecked(settings.value(u"overwrite"_s, false).toBool());
+  m_appendOnDrop->setChecked(settings.value(u"appendOnDrop"_s, false).toBool());
+  m_popup->setChecked(settings.value(u"popup"_s, true).toBool());
+}
+
+void
+MainWindow::saveSettings()
+  const {
+  QSettings settings;
+  settings.setValue(u"chapterFormat"_s, m_chapterFormat->currentIndex());
+  settings.setValue(u"extractMode"_s,   m_extractMode->currentIndex());
+  settings.setValue(u"overwrite"_s,     m_overwrite->isChecked());
+  settings.setValue(u"appendOnDrop"_s,  m_appendOnDrop->isChecked());
+  settings.setValue(u"popup"_s,         m_popup->isChecked());
+}
+
+void
+MainWindow::closeEvent(QCloseEvent *event) {
+  if (m_runner->running()) {
+    if (QMessageBox::question(this, tr("Extraction running"), tr("An extraction is running. Abort it and quit?")) != QMessageBox::Yes) {
+      event->ignore();
+      return;
+    }
+    m_runner->abortAll();
+  }
+
+  saveSettings();
+  QMainWindow::closeEvent(event);
 }
 
 void
 MainWindow::setRunning(bool running) {
-  for (QWidget *widget : std::initializer_list<QWidget *>{ m_extract, m_tree })
+  for (QWidget *widget : std::initializer_list<QWidget *>{ m_extract, m_addJobs, m_tree })
     widget->setEnabled(!running);
   m_abort->setEnabled(running);
   m_abortAll->setEnabled(running);
+  m_jobsDialog->setRunning(running);
 }
 
 void
 MainWindow::jobStarted(int index) {
-  statusBar()->showMessage(tr("Extracting %1 (%2 of %3)").arg(m_running[index].description).arg(index + 1).arg(m_running.size()));
+  statusBar()->showMessage(tr("Extracting %1").arg((*m_runList)[index].description));
+  if (m_runList == &m_queue)
+    m_jobsDialog->refresh();
 }
 
 void
-MainWindow::jobFinished(int index) {
-  m_totalProgress->setValue(index + 1);
+MainWindow::jobFinished(int) {
+  m_totalProgress->setValue(m_totalProgress->value() + 1);
+  if (m_runList == &m_queue)
+    m_jobsDialog->refresh();
 }
 
 void
@@ -277,15 +373,21 @@ MainWindow::allFinished() {
   statusBar()->clearMessage();
 
   QStringList problems;
-  int done = 0;
-  for (auto const &job : m_running) {
+  int done = 0, ran = 0;
+  for (auto const &job : *m_runList) {
+    if (job.status == Job::Status::Pending)
+      continue;                 // after Abort All
+    ++ran;
     if (job.status == Job::Status::Done)
       ++done;
     else
       problems << u"%1: %2"_s.arg(QFileInfo{job.file}.fileName(), job.status == Job::Status::Aborted ? tr("aborted") : job.status == Job::Status::Failed ? tr("failed") : tr("not run"));
   }
 
-  auto text = tr("%1 of %2 file(s) extracted.").arg(done).arg(m_running.size());
+  auto text = tr("%1 of %2 file(s) extracted.").arg(done).arg(ran);
+  statusBar()->showMessage(text, 10000);
+  if (!m_popup->isChecked())
+    return;
   if (problems.isEmpty())
     QMessageBox::information(this, tr("Extraction done"), text);
   else

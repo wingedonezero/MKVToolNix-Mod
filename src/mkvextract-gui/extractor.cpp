@@ -138,7 +138,10 @@ Runner::startNext() {
   m_pending.clear();
 
   Q_EMIT jobStarted(m_current);
-  Q_EMIT line(u"$ %1 %2"_s.arg(toolPath(u"mkvextract"_s), job.arguments.join(u' ')));
+  QStringList shown;
+  for (auto const &argument : job.arguments)
+    shown << (argument.contains(u' ') ? u"\"%1\""_s.arg(argument) : argument);
+  Q_EMIT line(u"$ %1 %2"_s.arg(toolPath(u"mkvextract"_s), shown.join(u' ')));
   Q_EMIT progress(0);
 
   m_process.start(toolPath(u"mkvextract"_s), job.arguments);

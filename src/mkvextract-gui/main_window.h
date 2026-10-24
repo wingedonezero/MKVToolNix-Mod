@@ -12,7 +12,7 @@
 
 #include <QMainWindow>
 
-#include "mkvextract-gui/extractor.h"
+#include "mkvextract-gui/dialogs.h"
 
 class QCheckBox;
 class QComboBox;
@@ -43,11 +43,15 @@ protected:
   QList<InputFile> m_files;
   Patterns m_patterns;
   QList<Job> m_running;         // the jobs Extract started
+  QList<Job> m_queue;           // the jobs Add Jobs queued
+  QList<Job> *m_runList{};      // the list being run
   Runner *m_runner{};
   QStringList m_logLines;
 
   QTreeWidget *m_tree{};
-  QCheckBox *m_appendOnDrop{}, *m_overwrite{}, *m_useSource{};
+  QCheckBox *m_appendOnDrop{}, *m_overwrite{}, *m_useSource{}, *m_popup{};
+  LogDialog *m_logDialog{};
+  JobsDialog *m_jobsDialog{};
   QPlainTextEdit *m_fileInformation{};
   QLineEdit *m_outputFolder{};
   QPushButton *m_browse{}, *m_log{}, *m_jobs{}, *m_addJobs{}, *m_extract{}, *m_options{}, *m_abortAll{}, *m_abort{};
@@ -72,7 +76,15 @@ protected:
   void showTreeContextMenu(QPoint const &pos);
   void setChecked(ItemKind kind, QString const &trackType, bool checked);
 
+  void closeEvent(QCloseEvent *event) override;
+
   void extract();
+  void addJobs();
+  void runJobs();
+  void run(QList<Job> &jobs);
+  void showOptions();
+  void loadSettings();
+  void saveSettings() const;
   void jobStarted(int index);
   void jobFinished(int index);
   void allFinished();
