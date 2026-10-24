@@ -41,7 +41,6 @@
 /doc/man/*/*.html
 /doc/man/*/*.xml
 /doc/man/*/*.xsl
-/doc/man/po4a/po/mkvtoolnix.pot
 /lib/gtest
 /lib/saxon-he
 /out/
@@ -65,9 +64,6 @@
 /packaging/windows/msix/certificate.sh
 /packaging/windows/msix/package-x64/
 /packaging/windows/msix/package-x86/
-/po/*.mo
-/po/mkvtoolnix.pot
-/po/qt/*.qm
 /share/icons/**/*.ico
 /share/icons/**/*.png
 /share/icons/**/*.svg
