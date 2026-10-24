@@ -375,8 +375,9 @@ vobsub_reader_c::deliver_packet(uint8_t *buf,
 
     // Some players ignore sub-pictures if there is no stop display command.
     // Add a stop display command only if 1 command chain exists and the hack is enabled.
+    // DVD units only: HD DVD units have 32-bit offsets.
 
-    if ((dcsq == dcsq2) && mtx::hacks::is_engaged(mtx::hacks::VOBSUB_SUBPIC_STOP_CMDS)) {
+    if (!mtx::spu::is_hd_dvd_unit(buf, size) && (dcsq == dcsq2) && mtx::hacks::is_engaged(mtx::hacks::VOBSUB_SUBPIC_STOP_CMDS)) {
       dcsq         += 2;        // points to first command chain
       dcsq2        += 4;        // find end of first command chain
       bool unknown  = false;
@@ -461,6 +462,7 @@ vobsub_reader_c::extract_one_spu_packet(int64_t track_id) {
   uint32_t packet_size          = 0;
   unsigned int spu_len          = 0;
   bool spu_len_valid            = false;
+  bool hd_dvd                   = false;
 
   m_bytes_processed            += extraction_end_pos - extraction_start_pos;
 
@@ -477,7 +479,9 @@ vobsub_reader_c::extract_one_spu_packet(int64_t track_id) {
         mxdebug_if(s_debug,
                    fmt::format("r_vobsub.cpp: stddeliver spu_len different from dst_size; pts {4} spu_len {0} dst_size {1} curpos {2} endpos {3}\n",
                                spu_len, dst_size, m_sub_file->getFilePointer(), extraction_end_pos, mtx::string::format_timestamp(pts)));
-      if (2 < dst_size)
+      if (hd_dvd)
+        put_uint32_be(&dst_buf[2], dst_size);
+      else if (2 < dst_size)
         put_uint16_be(dst_buf, dst_size);
 
       return deliver();
@@ -608,7 +612,9 @@ vobsub_reader_c::extract_one_spu_packet(int64_t track_id) {
             return deliver();
           }
           if (!spu_len_valid) {
-            spu_len       = get_uint16_be(dst_buf);
+            // HD DVD units: a zero 16-bit word, then the unit's size as 32 bits
+            hd_dvd        = mtx::spu::is_hd_dvd_unit(dst_buf, packet_size);
+            spu_len       = hd_dvd ? get_uint32_be(&dst_buf[2]) : get_uint16_be(dst_buf);
             spu_len_valid = true;
           }
 

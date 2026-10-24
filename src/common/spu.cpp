@@ -27,21 +27,31 @@ find_stop_display_position(uint8_t const *data,
   if (buf_size < 4)
     return {};
 
-  uint32_t control_start = get_uint16_be(&data[2]);
+  auto const hd_dvd      = is_hd_dvd_unit(data, buf_size);
+  auto const offset_size = hd_dvd ? 4u : 2u;
+  auto read_offset       = [data, hd_dvd](std::size_t pos) -> uint32_t {
+    return hd_dvd ? get_uint32_be(&data[pos]) : get_uint16_be(&data[pos]);
+  };
+
+  uint32_t control_start = read_offset(hd_dvd ? 6 : 2);
   uint32_t start_off     = 0;
   auto next_off          = control_start;
 
-  while ((start_off != next_off) && (next_off < buf_size)) {
+  while ((start_off != next_off) && (static_cast<std::size_t>(next_off) + 2 + offset_size < buf_size)) {
     start_off = next_off;
-    next_off  = get_uint16_be(&data[start_off + 2]);
+    next_off  = read_offset(start_off + 2);
 
     if (next_off < start_off) {
       mxdebug_if(debug, "spu::extraction_duration: Encountered broken SPU packet (next_off < start_off)\n");
       return {};
     }
 
-    auto off = start_off + 4;
-    for (auto type = data[off++]; type != 0xff; type = data[off++]) {
+    std::size_t off = start_off + 2 + offset_size;
+    while (off < buf_size) {
+      auto type = data[off++];
+      if (type == 0xff)
+        break;
+
       auto info    = fmt::format("spu_extraction_duration: cmd = {0:02x} ", static_cast<unsigned int>(type));
       auto unknown = false;
       switch(type) {
@@ -78,6 +88,19 @@ find_stop_display_position(uint8_t const *data,
           info += "graphic lines";
           off += 4;
           break;
+        case 0x83:
+        case 0x84:
+        case 0x85:
+        case 0x86:
+          if (!hd_dvd) {
+            info += fmt::format("unknown (0x{0:02x}), skipping {1} bytes.", type, next_off - off);
+            unknown = true;
+            break;
+          }
+          // HD DVD: palette (256 entries), contrast (256 entries), coords, 32-bit field addresses
+          info += 0x83 == type ? "HD palette" : 0x84 == type ? "HD alpha" : 0x85 == type ? "HD coords" : "HD graphic lines";
+          off  += 0x83 == type ? 768          : 0x84 == type ? 256        : 0x85 == type ? 6           : 8;
+          break;
         case 0xff:
           // All done, bye-bye
           info += "done";
@@ -93,6 +116,12 @@ find_stop_display_position(uint8_t const *data,
   }
 
   return {};
+}
+
+bool
+is_hd_dvd_unit(uint8_t const *data,
+               std::size_t const buf_size) {
+  return (buf_size >= 10) && (get_uint16_be(data) == 0);
 }
 
 timestamp_c
