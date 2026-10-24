@@ -106,7 +106,7 @@ create_extractors(libmatroska::KaxTracks &kax_tracks,
     if (codec_id.empty())
       mxerror(fmt::format(FY("The track ID {0} does not have a valid CodecID.\n"), track_id));
 
-    auto extractor = xtr_base_c::create_extractor(codec_id, track_id, *tspec_itr);
+    auto extractor = xtr_base_c::create_extractor(codec_id, track_id, *tspec_itr, track);
     if (!extractor)
       mxerror(fmt::format(FY("Extraction of track ID {0} with the CodecID '{1}' is not supported.\n"), track_id, codec_id));
 

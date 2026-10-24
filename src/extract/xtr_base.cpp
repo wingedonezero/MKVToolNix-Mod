@@ -21,6 +21,7 @@
 #include "common/mm_proxy_io.h"
 #include "common/mm_write_buffer_io.h"
 #include "common/strings/editing.h"
+#include "common/vc1.h"
 #include "extract/xtr_aac.h"
 #include "extract/xtr_alac.h"
 #include "extract/xtr_avc.h"
@@ -35,6 +36,7 @@
 #include "extract/xtr_rmff.h"
 #include "extract/xtr_textsubs.h"
 #include "extract/xtr_tta.h"
+#include "extract/xtr_vc1.h"
 #include "extract/xtr_vobsub.h"
 #include "extract/xtr_wav.h"
 #include "extract/xtr_webvtt.h"
@@ -122,10 +124,21 @@ xtr_base_c::init_content_decoder(libmatroska::KaxTrackEntry &track) {
   m_content_decoder_initialized = true;
 }
 
+// A Video for Windows track with the FourCC WVC1 (VC-1 Advanced Profile, as
+// mkvmerge and FFmpeg store it): written as a VC-1 elementary stream instead
+// of an AVI file.
+static bool
+is_vc1_advanced_profile(libmatroska::KaxTrackEntry &track) {
+  auto priv = find_child<libmatroska::KaxCodecPrivate>(&track);
+  // the BITMAPINFOHEADER's biCompression is at offset 16
+  return priv && (20 <= priv->GetSize()) && mtx::vc1::is_fourcc(reinterpret_cast<char const *>(priv->GetBuffer() + 16));
+}
+
 std::shared_ptr<xtr_base_c>
 xtr_base_c::create_extractor(const std::string &new_codec_id,
                              int64_t new_tid,
-                             track_spec_t &tspec) {
+                             track_spec_t &tspec,
+                             libmatroska::KaxTrackEntry &track) {
   std::shared_ptr<xtr_base_c> result;
 
   // Raw format
@@ -167,6 +180,8 @@ xtr_base_c::create_extractor(const std::string &new_codec_id,
     result.reset(new xtr_wavpack4_c(new_codec_id, new_tid, tspec));
 
   // Video formats
+  else if ((new_codec_id == MKV_V_MSCOMP) && is_vc1_advanced_profile(track))
+    result.reset(new xtr_vc1_c(new_codec_id, new_tid, tspec));
   else if (new_codec_id == MKV_V_MSCOMP)
     result.reset(new xtr_avi_c(new_codec_id, new_tid, tspec));
   else if (new_codec_id == MKV_V_MPEG4_AVC)

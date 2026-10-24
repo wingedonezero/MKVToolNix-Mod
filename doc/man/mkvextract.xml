@@ -820,6 +820,12 @@
      <para>
       Fixed <abbrev>FPS</abbrev> video tracks with this <classname>CodecID</classname> are written to <abbrev>AVI</abbrev> files.
      </para>
+     <para>
+      VC-1 (Advanced Profile) tracks with the FourCC 'WVC1' are written as VC-1 elementary streams instead (the
+      '.vc1' files that tsMuxer, eac3to and FFmpeg write): the sequence header and entry point from the
+      <classname>CodecPrivate</classname> in front unless the first frame carries them, then the frames, each with
+      its start code.
+     </para>
     </listitem>
    </varlistentry>
 

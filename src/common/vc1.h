@@ -144,6 +144,15 @@ bool parse_sequence_header(const uint8_t *buf, int size, sequence_header_t &seqh
 bool parse_entrypoint(const uint8_t *buf, int size, entrypoint_t &entrypoint, sequence_header_t &seqhdr);
 bool parse_frame_header(const uint8_t *buf, int size, frame_header_t &frame_header, sequence_header_t &seqhdr);
 
+// Whether the data starts with a start code prefix (00 00 01, zero bytes in
+// front of it allowed).
+bool starts_with_start_code(uint8_t const *buf, std::size_t size);
+// The headers (sequence header, entry point) a Video for Windows
+// CodecPrivate carries after its BITMAPINFOHEADER: from the first start
+// code on (mkvmerge puts a zero byte in front of them, other muxers do not);
+// nullptr if there is none.
+memory_cptr headers_from_vfw_codec_private(memory_c const &codec_private);
+
 class es_parser_c {
 protected:
   int64_t m_stream_pos;

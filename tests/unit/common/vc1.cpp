@@ -94,6 +94,48 @@ TEST(VC1, SkippedProgressiveFrameRepeatsFrames) {
   EXPECT_EQ(2, fh.repeat_frame);
 }
 
+TEST(VC1, StartsWithStartCode) {
+  auto check = [](std::vector<uint8_t> const &bytes) {
+    return mtx::vc1::starts_with_start_code(bytes.data(), bytes.size());
+  };
+
+  EXPECT_TRUE(check({ 0x00, 0x00, 0x01, 0x0d, 0x12 }));
+  EXPECT_TRUE(check({ 0x00, 0x00, 0x00, 0x01, 0x0f }));
+  EXPECT_FALSE(check({ 0x00, 0x01, 0x0d }));
+  EXPECT_FALSE(check({ 0x40, 0x00, 0x00, 0x01 }));
+  EXPECT_FALSE(check({ 0x00, 0x00, 0x00 }));
+  EXPECT_FALSE(check({}));
+}
+
+// a BITMAPINFOHEADER (40 bytes) followed by the given extra data
+memory_cptr
+vfw_codec_private(std::vector<uint8_t> const &extra) {
+  std::vector<uint8_t> bytes(40, 0x00);
+  bytes.insert(bytes.end(), extra.begin(), extra.end());
+
+  return memory_c::clone(bytes.data(), bytes.size());
+}
+
+TEST(VC1, HeadersFromVfwCodecPrivate) {
+  std::vector<uint8_t> headers{ 0x00, 0x00, 0x01, 0x0f, 0xca, 0xfe, 0x00, 0x00, 0x01, 0x0e, 0xbe, 0xef };
+
+  // mkvmerge: a zero byte, then the headers
+  auto with_zero = headers;
+  with_zero.insert(with_zero.begin(), 0x00);
+  auto from_mkvmerge = mtx::vc1::headers_from_vfw_codec_private(*vfw_codec_private(with_zero));
+  ASSERT_TRUE(!!from_mkvmerge);
+  EXPECT_EQ(*memory_c::clone(headers.data(), headers.size()), *from_mkvmerge);
+
+  // FFmpeg: the headers right after the BITMAPINFOHEADER
+  auto from_ffmpeg = mtx::vc1::headers_from_vfw_codec_private(*vfw_codec_private(headers));
+  ASSERT_TRUE(!!from_ffmpeg);
+  EXPECT_EQ(*memory_c::clone(headers.data(), headers.size()), *from_ffmpeg);
+
+  // none
+  EXPECT_FALSE(!!mtx::vc1::headers_from_vfw_codec_private(*vfw_codec_private({})));
+  EXPECT_FALSE(!!mtx::vc1::headers_from_vfw_codec_private(*vfw_codec_private({ 0x12, 0x34, 0x56, 0x78 })));
+}
+
 TEST(VC1, CodedFramesUnchanged) {
   // FCM 0, PTYPE 0 (P), TFF 1, RFF 1
   auto p = parse("0" "0" "1" "1", interlaced_pulldown_sequence());

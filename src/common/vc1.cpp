@@ -280,6 +280,32 @@ parse_frame_header(const uint8_t *buf,
   }
 }
 
+bool
+starts_with_start_code(uint8_t const *buf,
+                       std::size_t size) {
+  // a start code may have zero bytes in front of it (00 00 00 01 ...)
+  std::size_t num_zeros = 0;
+  while ((num_zeros < size) && !buf[num_zeros])
+    ++num_zeros;
+
+  return (2 <= num_zeros) && (num_zeros < size) && (1 == buf[num_zeros]);
+}
+
+memory_cptr
+headers_from_vfw_codec_private(memory_c const &codec_private) {
+  // a BITMAPINFOHEADER is 40 bytes; the codec's extra data follows it
+  std::size_t const bitmap_info_header_size = 40;
+
+  auto buf  = codec_private.get_buffer();
+  auto size = codec_private.get_size();
+
+  for (auto pos = bitmap_info_header_size; (pos + 4) <= size; ++pos)
+    if (!buf[pos] && !buf[pos + 1] && (1 == buf[pos + 2]))
+      return memory_c::clone(&buf[pos], size - pos);
+
+  return {};
+}
+
 //
 //  -------------------------------------------------
 //
