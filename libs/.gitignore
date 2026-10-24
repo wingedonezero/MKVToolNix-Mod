@@ -1,0 +1,3 @@
+# ours: re-include every file of the libraries (the top .gitignore has broad
+# patterns such as *.1 and *.o that would otherwise leave library files out)
+!*
