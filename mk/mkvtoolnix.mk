@@ -158,7 +158,7 @@ $(RES)/%: $(SRC)/%
 $(GEN)/qt_resources.rcc: $(RES)/$(QRC) $(addprefix $(RES)/,$(RES_REL))
 	$(MTX_RCC) -o $@ -binary $<
 
-MANPAGES := mkvmerge mkvinfo mkvextract mkvpropedit mkvtoolnix-gui
+MANPAGES := mkvmerge mkvinfo mkvextract mkvpropedit mkvtoolnix-gui mkvextract-gui
 $(GEN)/man/%.1: $(SRC)/doc/man/%.xml
 	@mkdir -p $(dir $@)
 	$(MTX_XSLTPROC) $(MTX_XSLTPROC_FLAGS) -o $@ $(MTX_DOCBOOK_ROOT)/manpages/docbook.xsl $<
@@ -253,7 +253,7 @@ mtx-install: mtx-programs mtx-man
 	install -t $(D)$(MTX_bindir) $(addprefix $(BIN)/,$(PROGRAMS) bluray_dump ebml_validator hevcc_dump xyzvc_dump)
 	$(INSTALL_DATA) -t $(D)$(MTX_man1dir) $(addprefix $(GEN)/man/,$(addsuffix .1,$(MANPAGES)))
 	$(INSTALL_DATA) -t $(D)$(MTX_mimepackagesdir) $(wildcard $(SRC)/share/mime/*.xml)
-	$(INSTALL_DATA) -t $(D)$(MTX_desktopdir) $(SRC)/share/desktop/org.bunkus.mkvtoolnix-gui.desktop
+	$(INSTALL_DATA) -t $(D)$(MTX_desktopdir) $(SRC)/share/desktop/org.bunkus.mkvtoolnix-gui.desktop $(SRC)/share/desktop/mkvextract-gui.desktop
 	$(INSTALL_DATA) -t $(D)$(MTX_metainfodir) $(SRC)/share/metainfo/org.bunkus.mkvtoolnix-gui.metainfo.xml
 	for p in mkvextract:mkvextract mkvinfo:mkvinfo mkvmerge:mkvtoolnix mkvpropedit:mkvpropedit mkvtoolnix-gui:mkvtoolnix; do \
 	    $(INSTALL_DATA) $(RES)/share/icons/mkvtoolnix/$${p#*:}.svg $(D)$(MTX_icondir)/scalable/apps/$${p%%:*}.svg; done

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=MKVExtract GUI
+GenericName=Matroska extractor
+Comment=Extract tracks, chapters, attachments and tags from Matroska files
+Icon=mkvextract
+Exec=mkvextract-gui %F
+Terminal=false
+MimeType=video/x-matroska-3d;video/x-matroska;audio/x-matroska;video/webm;audio/webm;
+Categories=AudioVideo;AudioVideoEditing;
+InitialPreference=-6

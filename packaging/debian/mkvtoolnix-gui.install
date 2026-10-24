@@ -1,6 +1,8 @@
+usr/bin/mkvextract-gui
 usr/bin/mkvtoolnix-gui
 usr/share/applications/*.desktop
 usr/share/icons/hicolor/scalable/apps/mkvtoolnix-gui.svg
+usr/share/man/man1/mkvextract-gui.1
 usr/share/man/man1/mkvtoolnix-gui.1
 usr/share/metainfo/*.xml
 usr/share/mkvtoolnix/qt_resources.rcc
