@@ -39,3 +39,4 @@ all: dist
 include $(ROOT)/mk/libs.mk
 include $(ROOT)/mk/mkvtoolnix.mk
 include $(ROOT)/mk/deb.mk
+include $(ROOT)/mk/mtx.mk
