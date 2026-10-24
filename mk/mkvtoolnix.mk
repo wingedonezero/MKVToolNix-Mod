@@ -34,8 +34,10 @@ $(TOOLS)/pkg-config: $(TOOLS)/pkg-config-args
 
 # Every library is required by configure and seen only in our prefix, so it
 # stops with a message instead of building without one or with another copy.
-MTX_CONFIGURE := --prefix=/usr --disable-update-check --enable-debug \
-                 $(if $(filter release,$(MODE)),--enable-optimization,--disable-optimization)
+# debug: debug information (-g3), no optimization; release: optimized, no
+# debug information (the option only adds -g3 -DDEBUG, and no code tests DEBUG)
+MTX_CONFIGURE := --prefix=/usr --disable-update-check \
+                 $(if $(filter release,$(MODE)),--enable-optimization --disable-debug,--disable-optimization --enable-debug)
 MTX_ENV := TMPDIR=$(MTX_TMP) PKG_CONFIG=$(TOOLS)/pkg-config \
            CPPFLAGS='-I$(PREFIX)/include -I$(PREFIX)/include/utf8cpp' LDFLAGS='-L$(PREFIX)/lib'
 $(call args_stamp,$(BUILD)/configure-args,$(MTX_CONFIGURE) $(MTX_ENV))
@@ -155,8 +157,13 @@ $(RES)/%.svg: $(SRC)/%.svgz
 $(RES)/%: $(SRC)/%
 	@mkdir -p $(dir $@)
 	cp $< $@
-$(GEN)/qt_resources.rcc: $(RES)/$(QRC) $(addprefix $(RES)/,$(RES_REL))
-	$(MTX_RCC) -o $@ -binary $<
+# compiled into the GUI (upstream installs it as qt_resources.rcc and reads it
+# from /usr/share/mkvtoolnix; built in, a GUI anywhere has its own icons)
+$(GEN)/qt_resources.cpp: $(RES)/$(QRC) $(addprefix $(RES)/,$(RES_REL))
+	$(MTX_RCC) -name qt_resources -o $@ $<
+$(OBJ)/gen/qt_resources.o: $(GEN)/qt_resources.cpp
+	@mkdir -p $(dir $@)
+	$(MTX_CXX) $(MTX_CXXFLAGS) $(MTX_INCLUDES) -c -o $@ -x c++ $<
 
 MANPAGES := mkvmerge mkvinfo mkvextract mkvpropedit mkvtoolnix-gui mkvextract-gui
 $(GEN)/man/%.1: $(SRC)/doc/man/%.xml
@@ -206,7 +213,7 @@ $(BIN)/mkvextract: $(OBJ)/src/extract/mkvextract.o $(foreach l,mtxextract mtxcom
 $(BIN)/mkvpropedit: $(OBJ)/src/propedit/propedit.o $(foreach l,mtxpropedit mtxcommon,$(call LIB,$(l)))
 	@mkdir -p $(dir $@)
 	$(call link,$< $(call LIB,mtxpropedit) $(COMMON_CLI) $(MTX_LINK_STATICALLY))
-$(BIN)/mkvtoolnix-gui: $(call moc_obj_of,$(GUI_MOCH)) $(call obj_of,$(GUI_SRC)) $(call LIB,mtxcommon)
+$(BIN)/mkvtoolnix-gui: $(call moc_obj_of,$(GUI_MOCH)) $(call obj_of,$(GUI_SRC)) $(OBJ)/gen/qt_resources.o $(call LIB,mtxcommon)
 	@mkdir -p $(dir $@)
 	$(call link,$(filter %.o %.moco,$^) $(COMMON_LIBS) $(COMMON_TAIL) $(MTX_QT_LIBS) -lvorbis -logg $(MTX_LINK_STATICALLY))
 
@@ -237,7 +244,7 @@ $(foreach t,$(TEST_APPS),$(eval $(call mtx_test,$(t))))
 
 PROGRAMS := mkvmerge mkvinfo mkvextract mkvpropedit mkvtoolnix-gui mkvextract-gui
 .PHONY: mtx-programs mtx-tests mtx-man
-mtx-programs: $(addprefix $(BIN)/,$(PROGRAMS) $(TOOLS_ALL)) $(GEN)/qt_resources.rcc
+mtx-programs: $(addprefix $(BIN)/,$(PROGRAMS) $(TOOLS_ALL))
 mtx-tests: $(addprefix $(BIN)/tests/,$(TEST_APPS))
 mtx-man: $(addprefix $(GEN)/man/,$(addsuffix .1,$(MANPAGES)))
 
@@ -258,13 +265,16 @@ mtx-install: mtx-programs mtx-man
 	for p in mkvextract:mkvextract mkvinfo:mkvinfo mkvmerge:mkvtoolnix mkvpropedit:mkvpropedit mkvtoolnix-gui:mkvtoolnix; do \
 	    $(INSTALL_DATA) $(RES)/share/icons/mkvtoolnix/$${p#*:}.svg $(D)$(MTX_icondir)/scalable/apps/$${p%%:*}.svg; done
 	$(INSTALL_DATA) -t $(D)$(MTX_pkgdatadir)/sounds $(wildcard $(SRC)/share/sounds/*.webm)
-	$(INSTALL_DATA) -t $(D)$(MTX_pkgdatadir) $(GEN)/qt_resources.rcc
 	sh $(ROOT)/mk/check-links.sh $(D)$(MTX_bindir)
 
+# dist/<mode>/: only the six programs, side by side (the debs carry the rest);
+# release ones stripped (build/release/ keeps them as linked)
 dist: mtx-install
 	@echo "== dist/$(MODE)"
+	rm -rf $(DIST)
 	@mkdir -p $(DIST)
-	rsync -a --delete $(STAGE)/usr/ $(DIST)/
+	install -t $(DIST) $(addprefix $(STAGE)$(MTX_bindir)/,$(PROGRAMS))
+	$(if $(filter release,$(MODE)),strip --strip-unneeded $(addprefix $(DIST)/,$(PROGRAMS)))
 
 # ./build.sh test: the unit tests, run as upstream's tests:run_unit ran them
 # (GoogleTest from libs/); its product tests needed sample files that are not
