@@ -115,6 +115,10 @@ GUI_UIH  := $(addprefix $(GEN)/,$(GUI_UI:.ui=.h))
 GUI_MOCH := $(call for_linux,$(call qobject_h,mkvtoolnix-gui))
 GUI_SRC  := $(call for_linux,$(call rel,$(sort $(shell find $(SRC)/src/mkvtoolnix-gui -name '*.cpp'))))
 
+# mkvextract-gui: a small window for mkvextract (Qt only)
+XGUI_MOCH := $(call for_linux,$(call qobject_h,mkvextract-gui))
+XGUI_SRC  := $(call for_linux,$(call rel,$(sort $(shell find $(SRC)/src/mkvextract-gui -name '*.cpp'))))
+
 TOOLS_ALL := ac3parser base64tool bluray_dump checksum diracparser dovic_dump dts_dump ebml_validator hevcc_dump \
              pgs_dump vc1parser xyzvc_dump
 TEST_APPS := common gui merge propedit
@@ -206,6 +210,10 @@ $(BIN)/mkvtoolnix-gui: $(call moc_obj_of,$(GUI_MOCH)) $(call obj_of,$(GUI_SRC)) 
 	@mkdir -p $(dir $@)
 	$(call link,$(filter %.o %.moco,$^) $(COMMON_LIBS) $(COMMON_TAIL) $(MTX_QT_LIBS) -lvorbis -logg $(MTX_LINK_STATICALLY))
 
+$(BIN)/mkvextract-gui: $(call moc_obj_of,$(XGUI_MOCH)) $(call obj_of,$(XGUI_SRC))
+	@mkdir -p $(dir $@)
+	$(call link,$(filter %.o %.moco,$^) $(MTX_QT_LIBS))
+
 tool_src = src/tools/$(1).cpp $(if $(filter ebml_validator,$(1)),src/tools/element_info.cpp)
 define mtx_tool
 $(BIN)/$(1): $$(call obj_of,$$(call tool_src,$(1))) $$(call LIB,mtxcommon)
@@ -227,7 +235,7 @@ $(BIN)/tests/$(1): $$(call obj_of,$$(call rel,$$(call files_in,tests/unit/$(1)))
 endef
 $(foreach t,$(TEST_APPS),$(eval $(call mtx_test,$(t))))
 
-PROGRAMS := mkvmerge mkvinfo mkvextract mkvpropedit mkvtoolnix-gui
+PROGRAMS := mkvmerge mkvinfo mkvextract mkvpropedit mkvtoolnix-gui mkvextract-gui
 .PHONY: mtx-programs mtx-tests mtx-man
 mtx-programs: $(addprefix $(BIN)/,$(PROGRAMS) $(TOOLS_ALL)) $(GEN)/qt_resources.rcc
 mtx-tests: $(addprefix $(BIN)/tests/,$(TEST_APPS))
