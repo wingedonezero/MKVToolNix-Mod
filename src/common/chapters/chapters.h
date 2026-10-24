@@ -80,7 +80,7 @@ mtx::chapters::kax_cptr parse_cue(mm_text_io_c *in, int64_t min_ts, int64_t max_
 
 std::size_t write_simple(libmatroska::KaxChapters &chapters, mm_io_c &out, mtx::bcp47::language_c const &language_to_extract);
 
-bool select_in_timeframe(libmatroska::KaxChapters *chapters, int64_t min_ts, int64_t max_ts, int64_t offset);
+bool select_in_timeframe(libmatroska::KaxChapters *chapters, int64_t min_ts, int64_t max_ts, int64_t offset, int64_t start_tolerance = 0);
 
 int64_t get_uid(libmatroska::KaxChapterAtom &atom);
 int64_t get_start(libmatroska::KaxChapterAtom &atom, int64_t value_if_not_found = -1);

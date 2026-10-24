@@ -1505,8 +1505,12 @@ add_chapters_for_current_part() {
   int64_t end                     = g_cluster_helper->get_max_timestamp_in_file(); // start + g_cluster_helper->get_duration();
   int64_t offset                  = g_no_linking ? g_cluster_helper->get_first_timestamp_in_file() + g_cluster_helper->get_discarded_duration() : 0;
 
+  // The part starts with a key frame up to 1 ms before its split point
+  // (cluster_helper_c::split_if_necessary()): a chapter that starts less than
+  // 1 ms after the part's first timestamp starts with that frame, and one
+  // that ends less than 1 ms after it is not in the part.
   auto chapters_here              = clone(g_kax_chapters);
-  bool have_chapters_in_timeframe = mtx::chapters::select_in_timeframe(chapters_here.get(), start, end, offset);
+  bool have_chapters_in_timeframe = mtx::chapters::select_in_timeframe(chapters_here.get(), start, end, offset, timestamp_c::ms(1).to_ns());
 
   mxdebug_if(s_debug_splitting_chapters, fmt::format("offset {0} start {1} end {2} have chapters in timeframe? {3} chapters in this file? {4}\n", offset, start, end, have_chapters_in_timeframe, !!s_chapters_in_this_file));
 

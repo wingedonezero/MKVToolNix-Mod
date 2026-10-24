@@ -917,6 +917,10 @@ remove_elements_unsupported_by_webm(libebml::EbmlMaster &master) {
    Chapters which start before the window but end inside or after the window
    are kept as well, and their start timestamp is adjusted.
 
+   With a start tolerance a chapter starting less than that after
+   <tt>min_ts</tt> starts at <tt>min_ts</tt>, and a chapter ending less than
+   that after <tt>min_ts</tt> does not reach into the window.
+
    Its parameters don't have to be checked for validity.
 
    \param min_ts The minimum timestamp to accept.
@@ -924,12 +928,14 @@ remove_elements_unsupported_by_webm(libebml::EbmlMaster &master) {
    \param offset This value is subtracted from both the start and end timestamp
      for each chapter after the decision whether or not to keep it has been
      made.
+   \param start_tolerance See above; 0 for none.
    \param m The master containing the elements to check.
 */
 static void
 remove_entries(int64_t min_ts,
                int64_t max_ts,
                int64_t offset,
+               int64_t start_tolerance,
                libebml::EbmlMaster &m) {
   if (0 == m.ListSize())
     return;
@@ -960,6 +966,13 @@ remove_entries(int64_t min_ts,
 
     if (cts)
       entries[i].start = cts->GetValue();
+
+    if (   cts
+        && (entries[i].start > min_ts)
+        && ((entries[i].start - min_ts) < start_tolerance)) {
+      entries[i].start = min_ts;
+      cts->SetValue(min_ts);
+    }
 
     auto cte = static_cast<libmatroska::KaxChapterTimeEnd *>(atom->FindFirstElt(EBML_INFO(libmatroska::KaxChapterTimeEnd), false));
 
@@ -996,7 +1009,10 @@ remove_entries(int64_t min_ts,
         || ((max_ts >= 0) && (entries[i].start > max_ts)))
       entries[i].remove = true;
 
-    if (entries[i].remove && (entries[i].start < min_ts) && (entries[i].end > min_ts))
+    if (   entries[i].remove
+        && (entries[i].start < min_ts)
+        && (entries[i].end > min_ts)
+        && ((entries[i].end - min_ts) >= start_tolerance))
       entries[i].spans = true;
 
     mxdebug_if(s_debug, fmt::format("remove_chapters: entries[{0}]: remove {1} spans {2} start {3} end {4}\n", i, entries[i].remove, entries[i].spans, entries[i].start, entries[i].end));
@@ -1027,7 +1043,7 @@ remove_entries(int64_t min_ts,
 
     auto m2 = dynamic_cast<libebml::EbmlMaster *>(m[i]);
     if (m2)
-      remove_entries(min_ts, max_ts, offset, *m2);
+      remove_entries(min_ts, max_ts, offset, start_tolerance, *m2);
   }
 
   // Now really delete those entries.
@@ -1164,6 +1180,9 @@ merge_entries(libebml::EbmlMaster &master) {
    \param offset This value is subtracted from both the start and end timestamp
      for each chapter after the decision whether or not to keep it has been
      made.
+   \param start_tolerance A chapter starting less than this after
+     <tt>min_ts</tt> starts at <tt>min_ts</tt>; one ending less than this
+     after <tt>min_ts</tt> does not reach into the window. 0 for none.
 
    \return \c false if all chapters were discarded, \c true otherwise
 */
@@ -1171,7 +1190,8 @@ bool
 select_in_timeframe(libmatroska::KaxChapters *chapters,
                     int64_t min_ts,
                     int64_t max_ts,
-                    int64_t offset) {
+                    int64_t offset,
+                    int64_t start_tolerance) {
   // Check the parameters.
   if (!chapters)
     return false;
@@ -1181,7 +1201,7 @@ select_in_timeframe(libmatroska::KaxChapters *chapters,
   for (master_idx = 0; chapters->ListSize() > master_idx; master_idx++) {
     auto work_master = dynamic_cast<libmatroska::KaxEditionEntry *>((*chapters)[master_idx]);
     if (work_master)
-      remove_entries(min_ts, max_ts, offset, *work_master);
+      remove_entries(min_ts, max_ts, offset, start_tolerance, *work_master);
   }
 
   // Count the number of atoms in each edition. Delete editions without
