@@ -26,3 +26,4 @@ store empty folders: zlib's two are not kept).
 
 | Folder | Upstream release | Source | Check |
 |---|---|---|---|
+| `libebml/` | libebml 1.4.7 | https://dl.matroska.org/downloads/libebml/libebml-1.4.7.tar.xz | tarball sha256 `5b08214f929ee54c6187c370f84235fc9d0f2a2258c4d320d68eae6e2bdfd3f7` (sha512 = published `.sha512.txt`); signature good (Moritz Bunkus, D919 9745 B054 5F2E 8197 062B 0F92 290A 445B 9007, signing subkey 3301 A29D 88D0 1A0C F999 954F 74AF 00AD F2E3 2C85) |
