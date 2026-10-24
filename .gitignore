@@ -118,3 +118,7 @@ BROWSE
 Makefile
 TAGS
 lib*.a
+
+# MKVToolNix-Mod: build.sh output
+/build/
+/dist/
