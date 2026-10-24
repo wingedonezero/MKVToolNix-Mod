@@ -141,28 +141,89 @@ xtr_avc_c::create_file(xtr_base_c *master,
   auto buf        = mpriv->get_buffer();
   m_nal_size_size = 1 + (buf[4] & 3);
 
-  size_t pos          = 6;
+  // The SPS & PPS are kept and written with the first frame (behind its
+  // access unit delimiter, if any, and only those it does not carry
+  // itself), so that the stream starts with a complete access unit.
+  auto size    = mpriv->get_size();
+  size_t pos   = 6;
+  auto collect = [this, buf, size, &pos](bool is_sps) -> bool {
+    if ((pos + 2) > size)
+      return false;
+
+    auto nal_size = get_uint16_be(&buf[pos]);
+    pos          += 2;
+
+    if ((pos + nal_size) > size) {
+      mxwarn(fmt::format(FY("Track {0}: NAL too big. Size according to header field: {1}, available bytes in packet: {2}. This NAL is defect and will be skipped.\n"), m_tid, nal_size, size - pos));
+      return false;
+    }
+
+    auto nalu = memory_c::clone(&buf[pos], nal_size);
+    pos      += nal_size;
+
+    if (!nal_size)
+      return true;
+
+    m_codec_private_parameter_sets.push_back(nalu);
+    if (is_sps)
+      m_parser.handle_sps_nalu(nalu);
+    else
+      m_parser.handle_pps_nalu(nalu);
+
+    return true;
+  };
+
   unsigned int numsps = buf[5] & 0x1f;
   size_t i;
-  for (i = 0; (i < numsps) && (mpriv->get_size() > pos); ++i) {
-    auto previous_pos = pos;
-    if (!write_nal(buf, pos, mpriv->get_size(), 2))
+  for (i = 0; (i < numsps) && (size > pos); ++i)
+    if (!collect(true))
       break;
 
-    m_parser.handle_sps_nalu(memory_c::borrow(&buf[previous_pos + 2], pos - previous_pos - 2));
-  }
-
-  if (mpriv->get_size() <= pos)
+  if (size <= pos)
     return;
 
   unsigned int numpps = buf[pos++];
 
-  for (i = 0; (i < numpps) && (mpriv->get_size() > pos); ++i) {
-    auto previous_pos = pos;
-    write_nal(buf, pos, mpriv->get_size(), 2);
+  for (i = 0; (i < numpps) && (size > pos); ++i)
+    collect(false);
+}
 
-    m_parser.handle_pps_nalu(memory_c::borrow(&buf[previous_pos + 2], pos - previous_pos - 2));
+void
+xtr_avc_c::write_first_frame(uint8_t *buf,
+                             std::size_t size) {
+  auto nalus = find_nal_units(buf, size);
+
+  // the parameter sets from CodecPrivate the first frame does not carry
+  // itself (mkvmerge keeps them in the frames; MP4 sources have them in
+  // CodecPrivate only)
+  std::vector<memory_cptr> missing;
+  for (auto const &ps : m_codec_private_parameter_sets) {
+    auto in_frame = std::any_of(nalus.begin(), nalus.end(), [this, buf, size, &ps](auto const &nalu) {
+      auto const offset = static_cast<std::size_t>(nalu.first->get_buffer() - buf);
+      return ((offset + nalu.first->get_size()) <= size)
+          && ((nalu.first->get_size() - m_nal_size_size) == ps->get_size())
+          && !std::memcmp(nalu.first->get_buffer() + m_nal_size_size, ps->get_buffer(), ps->get_size());
+    });
+
+    if (!in_frame)
+      missing.push_back(ps);
   }
+
+  size_t pos = 0;
+
+  // an access unit delimiter is the access unit's first NALU
+  if (!nalus.empty() && (nalus.front().second == mtx::avc::NALU_TYPE_ACCESS_UNIT))
+    if (!write_nal(buf, pos, size, m_nal_size_size))
+      return;
+
+  for (auto const &ps : missing) {
+    m_out->write(ms_start_code, 4);
+    m_out->write(ps);
+  }
+
+  while (size > pos)
+    if (!write_nal(buf, pos, size, m_nal_size_size))
+      return;
 }
 
 nal_unit_list_t
@@ -193,6 +254,12 @@ xtr_avc_c::handle_frame(xtr_frame_t &f) {
 
   if (need_to_write_access_unit_delimiter(buf, f.frame->get_size()))
     write_access_unit_delimiter();
+
+  if (m_first_frame) {
+    m_first_frame = false;
+    write_first_frame(buf, f.frame->get_size());
+    return;
+  }
 
   while (f.frame->get_size() > pos)
     if (!write_nal(buf, pos, f.frame->get_size(), m_nal_size_size))

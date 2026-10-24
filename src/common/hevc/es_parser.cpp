@@ -112,6 +112,7 @@ es_parser_c::clear() {
   m_extra_data_pre.clear();
   m_extra_data_initial.clear();
   m_pending_frame_data.clear();
+  m_access_unit_delimiter.reset();
 
   m_parsed_position = 0;
 
@@ -482,8 +483,12 @@ es_parser_c::handle_nalu_internal(memory_cptr const &nalu,
 
     case NALU_TYPE_ACCESS_UNIT:
       flush_incomplete_frame();
-      if (!s_debug_discard_access_unit_delimiters)
-        add_nalu_to_extra_data(nalu);
+      if (!s_debug_discard_access_unit_delimiters) {
+        // the next frame's first NALU, also when parameter sets are put
+        // in front of a key frame (build_frame_data())
+        nalu->take_ownership();
+        m_access_unit_delimiter = nalu;
+      }
       break;
 
     case NALU_TYPE_FILLER_DATA:

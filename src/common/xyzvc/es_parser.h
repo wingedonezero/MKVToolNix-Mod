@@ -44,6 +44,11 @@ protected:
   mtx_mp_rational_t m_par{};
 
   std::vector<memory_cptr> m_extra_data_pre, m_extra_data_initial, m_pending_frame_data;
+  // The access unit delimiter that starts the next frame. Kept apart from the
+  // extra data so that it stays the frame's first NALU whatever is put in
+  // front of the rest (parameter sets before key frames). HEVC: the NALU as
+  // it is; AVC: with its size in front, like AVC's extra data.
+  memory_cptr m_access_unit_delimiter;
   std::deque<frame_t> m_frames, m_frames_out;
 
   std::deque<std::pair<int64_t, uint64_t>> m_provided_timestamps;

@@ -315,12 +315,17 @@ es_parser_c::build_frame_data() {
     add_parameter_sets_to_extra_data();
 
   m_incomplete_frame.m_data_parts = std::move(m_extra_data_pre);
-  m_incomplete_frame.m_data_parts.reserve(m_incomplete_frame.m_data_parts.size() + m_pending_frame_data.size());
+  m_incomplete_frame.m_data_parts.reserve(m_incomplete_frame.m_data_parts.size() + m_pending_frame_data.size() + 1);
+
+  // the access unit delimiter is the first NALU of its access unit
+  if (m_access_unit_delimiter)
+    m_incomplete_frame.m_data_parts.insert(m_incomplete_frame.m_data_parts.begin(), m_access_unit_delimiter);
 
   std::copy(m_pending_frame_data.begin(), m_pending_frame_data.end(), std::back_inserter(m_incomplete_frame.m_data_parts));
 
   m_extra_data_pre.clear();
   m_pending_frame_data.clear();
+  m_access_unit_delimiter.reset();
 }
 
 void

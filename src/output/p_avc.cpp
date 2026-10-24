@@ -150,8 +150,9 @@ avc_video_packetizer_c::process_nalus(memory_c &data)
 
     auto const nalu_type = ptr[idx + m_nalu_size_len] & 0x1f;
 
+    // (access unit delimiters are kept: once dropped they could not be restored)
     if (   (static_cast<int>(nalu_size) == m_nalu_size_len) // empty NALU?
-        || mtx::included_in(nalu_type, mtx::avc::NALU_TYPE_FILLER_DATA, mtx::avc::NALU_TYPE_ACCESS_UNIT)) {
+        || (nalu_type == mtx::avc::NALU_TYPE_FILLER_DATA)) {
       memory_c::splice(data, idx, nalu_size);
       total_size -= nalu_size;
       ptr         = data.get_buffer();

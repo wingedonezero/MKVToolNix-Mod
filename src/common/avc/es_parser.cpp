@@ -75,6 +75,7 @@ es_parser_c::flush() {
 void
 es_parser_c::clear() {
   m_unparsed_buffer.reset();
+  m_access_unit_delimiter.reset();
   m_have_incomplete_frame = false;
   m_parsed_position       = 0;
 }
@@ -402,8 +403,14 @@ es_parser_c::handle_nalu(memory_cptr const &nalu,
 
     case NALU_TYPE_END_OF_SEQ:
     case NALU_TYPE_END_OF_STREAM:
-    case NALU_TYPE_ACCESS_UNIT:
       flush_incomplete_frame();
+      break;
+
+    case NALU_TYPE_ACCESS_UNIT:
+      // ends the frame before it and is the next frame's first NALU (kept:
+      // once dropped it could not be restored)
+      flush_incomplete_frame();
+      m_access_unit_delimiter = mtx::mpeg::create_nalu_with_size(nalu, m_nalu_size_length);
       break;
 
     case NALU_TYPE_FILLER_DATA:
@@ -597,10 +604,22 @@ es_parser_c::calculate_frame_order() {
 memory_cptr
 es_parser_c::create_nalu_with_size(const memory_cptr &src,
                                    bool add_extra_data) {
-  auto nalu = mtx::mpeg::create_nalu_with_size(src, m_nalu_size_length, add_extra_data ? m_extra_data_pre : std::vector<memory_cptr>{});
+  auto extra_data = std::vector<memory_cptr>{};
 
-  if (add_extra_data)
+  if (add_extra_data) {
+    // the access unit delimiter first, then the NALUs gathered before the
+    // frame's first slice (SPS, PPS, SEI, ...)
+    if (m_access_unit_delimiter)
+      extra_data.push_back(m_access_unit_delimiter);
+    extra_data.insert(extra_data.end(), m_extra_data_pre.begin(), m_extra_data_pre.end());
+  }
+
+  auto nalu = mtx::mpeg::create_nalu_with_size(src, m_nalu_size_length, extra_data);
+
+  if (add_extra_data) {
     m_extra_data_pre.clear();
+    m_access_unit_delimiter.reset();
+  }
 
   return nalu;
 }

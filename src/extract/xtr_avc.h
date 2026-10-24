@@ -26,6 +26,9 @@ protected:
   mtx::avc::es_parser_c m_parser;
   std::optional<unsigned int> m_previous_idr_pic_id;
   debugging_option_c m_debug_access_unit_delimiters{"access_unit_delimiters"};
+  // the SPS & PPS from CodecPrivate, written with the first frame
+  std::vector<memory_cptr> m_codec_private_parameter_sets;
+  bool m_first_frame{true};
 
   static uint8_t const ms_start_code[4], ms_aud_nalu[2];
 
@@ -44,6 +47,7 @@ public:
 
 protected:
   virtual bool need_to_write_access_unit_delimiter(uint8_t *buffer, std::size_t size);
+  virtual void write_first_frame(uint8_t *buffer, std::size_t size);
   virtual void write_access_unit_delimiter();
   virtual uint8_t get_nalu_type(uint8_t const *buffer, std::size_t size) const;
 };

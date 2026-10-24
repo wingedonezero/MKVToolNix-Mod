@@ -801,6 +801,11 @@
       <abbrev>H.264</abbrev> / <abbrev>AVC</abbrev> video tracks are written to <abbrev>H.264</abbrev> elementary streams which can be
       processed further with e.g. <productname>MP4Box</productname> from the <productname>GPAC</productname> package.
      </para>
+     <para>
+      Every NAL unit of the frames is written as it is stored, access unit delimiters included (mkvmerge keeps them). The
+      sequence and picture parameter sets from the <classname>CodecPrivate</classname> are written with the first
+      frame, behind its access unit delimiter, and only those the frame does not carry itself.
+     </para>
     </listitem>
    </varlistentry>
 
