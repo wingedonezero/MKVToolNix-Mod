@@ -58,17 +58,10 @@
 /packaging/debian/mkvtoolnix.substvars
 /packaging/debian/rules
 /packaging/debian/tmp
-/packaging/macos/config.local.sh
-/packaging/macos/unlock_keychain.sh
-/packaging/windows/msix/assets/
-/packaging/windows/msix/certificate.sh
-/packaging/windows/msix/package-x64/
-/packaging/windows/msix/package-x86/
 /share/icons/**/*.ico
 /share/icons/**/*.png
 /share/icons/**/*.svg
 /share/icons/*/*.h
-/src/*/manifest.xml
 /src/*/qt_resources.rcc
 /src/benchmark/
 /src/build-mkvtoolnix-gui-Desktop-Debug
@@ -90,7 +83,6 @@
 /src/mkvtoolnix-gui/mkvtoolnix-gui.pro.user*
 /src/mkvtoolnix-gui/qt_resources_macos.qrc
 /src/mkvtoolnix-gui/static_plugins.cpp
-/src/mkvtoolnix/mkvtoolnix
 /src/tools/ac3parser
 /src/tools/base64tool
 /src/tools/bluray_dump
