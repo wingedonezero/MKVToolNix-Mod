@@ -23,12 +23,10 @@ fi
 
 AC_LANG_POP
 
-if test x"$ac_cv_utf8cpp" = xyes; then
-  AC_MSG_NOTICE([Using the system version of UTF8-CPP])
-  UTF8CPP_INTERNAL=no
-else
-  AC_MSG_NOTICE([Using the internal version of UTF8-CPP])
-  UTF8CPP_INTERNAL=yes
+dnl MKVToolNix-Mod: required, from libs/ (there is no internal copy)
+if test x"$ac_cv_utf8cpp" != xyes; then
+  AC_MSG_ERROR([UTF8-CPP not found or not usable (libs/utf8-cpp, built by build.sh; its headers are in include/utf8cpp/; see config.log)])
 fi
+UTF8CPP_INTERNAL=no
 
 AC_SUBST(UTF8CPP_INTERNAL)

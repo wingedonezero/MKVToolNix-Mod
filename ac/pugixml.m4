@@ -23,14 +23,10 @@ if test x"$pugixml_found" = xno; then
   AC_LANG_POP
 fi
 
-if test $pugixml_found = yes; then
-  AC_MSG_NOTICE([Using the system version of the pugixml library])
-  PUGIXML_INTERNAL=no
-else
-  AC_MSG_NOTICE([Using the internal version of the pugixml library])
-  PUGIXML_CFLAGS=
-  PUGIXML_INTERNAL=yes
-  PUGIXML_LIBS=
+dnl MKVToolNix-Mod: required, from libs/ (there is no internal copy)
+if test $pugixml_found != yes; then
+  AC_MSG_ERROR([pugixml not found (libs/pugixml, built by build.sh)])
 fi
+PUGIXML_INTERNAL=no
 
 AC_SUBST(PUGIXML_INTERNAL)

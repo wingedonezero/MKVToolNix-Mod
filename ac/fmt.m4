@@ -11,7 +11,8 @@ AC_CACHE_CHECK([fmt],[ac_cv_fmt],[
   CXXFLAGS="$STD_CXX $CXXFLAGS"
   LIBS="$LIBS -lfmt"
 
-  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+  dnl MKVToolNix-Mod: linked, not only compiled (the library must be there too)
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[
     #include <fmt/format.h>
     #include <fmt/ostream.h>
 
@@ -30,11 +31,10 @@ AC_CACHE_CHECK([fmt],[ac_cv_fmt],[
   AC_LANG_POP
 ])
 
-if test x"$ac_cv_fmt" = xyes; then
-  FMT_INTERNAL=no
-else
-  AC_MSG_NOTICE([Using the internal version of fmt])
-  FMT_INTERNAL=yes
+dnl MKVToolNix-Mod: required, from libs/ (there is no internal copy)
+if test x"$ac_cv_fmt" != xyes; then
+  AC_MSG_ERROR([fmt 8.0.0 or later not found or not usable (libs/fmt, built by build.sh; see config.log)])
 fi
+FMT_INTERNAL=no
 
 AC_SUBST(FMT_INTERNAL)

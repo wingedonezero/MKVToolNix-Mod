@@ -14,17 +14,9 @@ AC_DEFUN([AX_GTEST],[
     GTEST_LIBS="`$PKG_CONFIG --libs gtest`"
     GTEST_TYPE=system
 
-  elif test -d lib/gtest/include && test -d lib/gtest/src ; then
-    AC_MSG_CHECKING(for internal gtest)
-    AC_CACHE_VAL(ax_cv_gtest_internal,[
-      CPPFLAGS="$CPPFLAGS_SAVED -Ilib/gtest/include"
-      AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <gtest/gtest.h>]], [[]])],[ax_cv_gtest_internal=yes],[ax_cv_gtest_internal=no])
-    ])
-    AC_MSG_RESULT($ax_cv_gtest_internal)
-
-    if test x$ax_cv_gtest_internal=yes; then
-      GTEST_TYPE=internal
-    fi
+  else
+    dnl MKVToolNix-Mod: required (the unit tests), from libs/
+    AC_MSG_ERROR([GoogleTest not found (libs/googletest, built by build.sh)])
   fi
 
   AC_LANG_POP

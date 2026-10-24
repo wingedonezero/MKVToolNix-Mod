@@ -47,10 +47,8 @@ AC_CACHE_CHECK([nlohmann's json-cpp],[ac_cv_nlohmann_jsoncpp],[
 ])
 
 if test x"$ac_cv_nlohmann_jsoncpp" = xno; then
-  AC_MSG_NOTICE([Using the internal version of nlohmann json-cpp])
-
-  NLOHMANN_JSON_INTERNAL=yes
-  AC_DEFINE([HAVE_NLOHMANN_JSONCPP],[0],[Define if nlohmann's json-cpp is available.])
+  dnl MKVToolNix-Mod: required, from libs/ (there is no internal copy)
+  AC_MSG_ERROR([nlohmann's json-cpp not found or not usable (libs/nlohmann-json, built by build.sh; see config.log)])
 
 else
   AC_MSG_NOTICE([Using the system version of nlohmann json-cpp])

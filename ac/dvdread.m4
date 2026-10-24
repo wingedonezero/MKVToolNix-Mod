@@ -17,6 +17,9 @@ if test x"$dvdread_found" = xyes; then
   AC_DEFINE(HAVE_DVDREAD,,[define if building with dvdread])
   USE_DVDREAD=yes
   opt_features_yes="$opt_features_yes\n   * DVD chapter support via libdvdread"
+elif test "x$with_dvdread" != "xno"; then
+  dnl MKVToolNix-Mod: never quietly without DVD chapters
+  AC_MSG_ERROR([libdvdread not found (libs/libdvdread, built by build.sh; or configure --without-dvdread)])
 else
   opt_features_no="$opt_features_no\n   * DVD chapter support via libdvdread"
 fi

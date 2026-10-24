@@ -2,33 +2,12 @@ dnl
 dnl Test for libEBML and libMatroska, and define MATROSKA_CFLAGS and MATROSKA_LIBS
 dnl
 
+dnl MKVToolNix-Mod: required, from libs/ (there are no internal copies)
 EBML_MATROSKA_INTERNAL=no
-PKG_CHECK_MODULES([EBML],[libebml >= 1.4.7],[],[EBML_MATROSKA_INTERNAL=yes])
-PKG_CHECK_MODULES([MATROSKA],[libmatroska >= 1.7.2],[],[EBML_MATROSKA_INTERNAL=yes])
-
-if test x"$EBML_MATROSKA_INTERNAL" = xyes; then
-  if ! test -f lib/libebml/ebml/EbmlTypes.h ; then
-    echo '*** The internal version of the libEBML library is supposed to be used,'
-    echo '*** but it was not found in "lib/libebml. If this is a clone from the'
-    echo '*** git repository then submodules have to be initialized with the'
-    echo '*** following two commands:'
-    echo '***'
-    echo '*** git submodule init'
-    echo '*** git submodule update'
-    exit 1
-  fi
-
-  if ! test -f lib/libmatroska/matroska/KaxVersion.h ; then
-    echo '*** The internal version of the libMatroska library is supposed to be used,'
-    echo '*** but it was not found in "lib/libmatroska". If this is a clone from the'
-    echo '*** git repository then submodules have to be initialized with the'
-    echo '*** following two commands:'
-    echo '***'
-    echo '*** git submodule init'
-    echo '*** git submodule update'
-    exit 1
-  fi
-fi
+PKG_CHECK_MODULES([EBML],[libebml >= 1.4.7],[],
+  [AC_MSG_ERROR([libEBML 1.4.7 or later not found (libs/libebml, built by build.sh)])])
+PKG_CHECK_MODULES([MATROSKA],[libmatroska >= 1.7.2],[],
+  [AC_MSG_ERROR([libMatroska 1.7.2 or later not found (libs/libmatroska, built by build.sh)])])
 
 AC_SUBST(EBML_MATROSKA_INTERNAL)
 AC_SUBST(EBML_CFLAGS)

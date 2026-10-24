@@ -27,10 +27,12 @@ dnl
       AC_DEFINE(HAVE_FLAC_DECODER_SKIP, [1], [Define if FLAC__stream_decoder_skip_single_frame exists])
       AC_DEFINE(HAVE_FLAC_FORMAT_H, [1], [Define if the FLAC headers are present])
     else
-      FLAC_CFLAGS=""
-      FLAC_LIBS=""
-      opt_features_no="$opt_features_no\n   * FLAC audio (version too old)"
+      dnl MKVToolNix-Mod: never quietly without FLAC
+      AC_MSG_ERROR([libFLAC too old: no FLAC__stream_decoder_skip_single_frame (libs/flac; or configure --without-flac)])
     fi
+  elif test "$with_flac" != "no"; then
+    dnl MKVToolNix-Mod: never quietly without FLAC
+    AC_MSG_ERROR([libFLAC not found (libs/flac, built by build.sh; or configure --without-flac)])
   else
     FLAC_CFLAGS=""
     FLAC_LIBS=""
