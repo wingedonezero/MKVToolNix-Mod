@@ -5,17 +5,17 @@
 There's no dedicated include directory. Each include file is located
 in the same directory its accompanying cpp file is located in as well.
 
-Directories in alphabetical order:
+Directories and files in alphabetical order:
 
 * `ac`: Macro snippets used for the `configure` script.
-* `contrib`: Spec files for RPM creation and other contributed files.
+* `build.sh`: the build (see the README); `mk/` holds its make rules.
 * `doc/man`: man pages. They're written as DocBook XML files and
   converted to HTML and man format automatically.
 * `examples`: Examples for the end user.
-* `installer`: Files for the Windows installer.
-* `lib`: External libraries that are required for building. Should not
-  be touched but can be used.
-* `po`: Translation of the programs (not of the man pages).
+* `lib`: MKVToolNix's own small libraries (avilib, librmff).
+* `libs`: our copies of the libraries MKVToolNix-Mod is built on (see
+  `libs/README.md`).
+* `packaging/debian`: the package descriptions the debs are made from.
 * `share`: Image, desktop files etc.
 * `src/common`: Common classes used by all tools. This library is
   linked to each program.
@@ -24,14 +24,15 @@ Directories in alphabetical order:
 * `src/input`: Readers (demux source files). Only used in mkvmerge.
 * `src/merge`: mkvmerge's main files, e.g. command line handling,
   output control, file creating etc.
+* `src/mkvextract-gui`: mkvextract GUI, a small program of its own.
 * `src/mkvtoolnix-gui`: the MKVToolNix GUI.
+* `src/mpegparser`: the MPEG-1/2 video parser.
 * `src/output`: Packetizers (create the tracks in the output
   file). Only used in mkvmerge.
 * `src/propedit`: mkvpropedit's main files.
 * `src/scripts` and `src/tools`: Scripts and compiled tools that may
   or may not be useful during development.
-* `tests`: Test suite (requires external data package not distributed
-  freely)
+* `tests/unit`: the unit tests (Google Test).
 
 ## Strings & encoding
 
@@ -223,108 +224,8 @@ identification function in `src/input/r_matroska.cpp`.
 
 ## Translations
 
-These are general hints for anyone wishing to translate
-MKVToolNix.
-
-There are basically three things that can be translated in the
-MKVToolNix package:
-
-1. The programs and their messages themselves. This is the most
-   important part.
-2. The manual pages.
-
-All three are translated by the `gettext` system. This system uses
-.po-files which map the original English version to the translated
-version.  There are several (OpenSource) applications available that
-can be used to translate such files,
-e.g. [poedit](http://www.poedit.net/) if you're using Windows.
-
-Alternatively you can use the [Transifex](https://www.transifex.com/)
-web service for translating MKVToolNix. Please apply to join the
-[MKVToolNix project](https://www.transifex.com/moritz-bunkus/mkvtoolnix/dashboard/)
-and drop me a line via [email](mailto:mo@bunkus.online). I'll add you
-to the project as soon as possible.
-
-Please ask the author for an up-to-date template of the untranslated
-strings before you start doing anything else. He will attach the
-untranslated translation file (xyz.po) for the programs themselves (the
-first point of the three mentioned above). Take a look at it and at
-the poedit software. If you feel up to the task then simply start
-translating and send the translated .po file back to the author. The
-author can notify you whenever phrases change or are added.
-
-If you want to test your translations you can do that as well:
-
-1. Install mkvtoolnix.
-2. Translate the xyz.po file.
-3. Whenever you want to test something compile the xyz.po to a .mo file
-   with your po editor application.
-4. Replace one of the installed translation files
-   (e.g. `mkvtoolnix\locale\de\mkvtoolnix.mo`) with your compiled file.
-5. Start the GUI, go to the preferences dialog and select 'German' as the
-   language (the 'de' file you've replaced in step 4 is for German).
-
-Please note that a lot of strings must not be translated, especially
-command line options and their values. If a value to an option is a
-fixed string then it must not be translated, but if it is a placeholder
-e.g. for a file name then you can of course translate the `filename`
-part. Example:
-
-    --stereo-mode <TID:[none|both]>
-
-Here neither `--stereo-mode` nor `none` or `both` may be translated
-because mkvmerge expects all those in English. But in
-
-    --attach-file filename
-
-you can of course translate `filename`.
-
-Some other hints:
-
-* `TID` = track ID, a number
-* `FID` = file ID, again a number
-* `SFID`, `STID`, `DFID`, `DTID`: source file ID, source track ID, destination
-  file ID, destination track ID
-
-If you're unsure what the author is trying to say (the author is not a
-native English speaker) or what you can and what you must not
-translate just drop him a note.
-
-You can send the author your work in progress whenever you feel like
-it -- you don't have to finish everything at once.
-
-Once you have shown that you are comfortable with translating you can
-also get write access to the project's Git repository and push updates
-there yourself.
-
-## Adding new translations
-
-### Programs
-
-This is a TODO list for adding a new translation for the programs
-MKVToolNix:
-
-* Run `rake translations:new-programs-po LANGUAGE=<English name of
-  language> EMAIL=<email address>`
-* Add new entry to `translation_c::initialize_available_translations()`
-  in `src/common/translation.cpp`
-* Add new language file to `packaging/windows/installer/translations/`
-* Include translation's author in `AUTHORS`
-* Include message in `NEWS.md`
-* Either re-run `configure` or add the new translation in `build-config`
-  to `TRANSLATIONS`; afterwards verify the format strings with `rake
-  translations:verify-format-strings`
-* Add new test case `ui_locale_<code>_<CODE>`
-
-### man pages
-
-This is a TODO list for adding a new translation of the man pages to
-MKVToolNix:
-
-* Run `rake translations:new-programs-po LANGUAGE=<English name of
-  language> EMAIL=<email address>`
-* Include translation's author in `AUTHORS`
-* Include message in `NEWS.md`
-* Either re-run `configure` or add the new translation in
-  `build-config` to `MANPAGES_TRANSLATIONS`; afterwards verify the
-  format strings with `rake translations:verify-format-strings`
+MKVToolNix-Mod has no translations: the programs, the GUIs and the man
+pages are in English only, and the interface language list holds only
+English (`translation_c::initialize_available_translations()` in
+`src/common/translation.cpp`). The messages are still marked for
+translation (`Y()`, `FY()`, `QY()`) as upstream marks them.

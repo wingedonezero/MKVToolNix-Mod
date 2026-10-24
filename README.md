@@ -1,25 +1,18 @@
-MKVToolNix 103.0
-=================
+MKVToolNix-Mod (MKVToolNix 103.0)
+==================================
 
 # Table of contents
 
 1. [Introduction](#1-introduction)
-2. [Installation](#2-installation)
-    1. [Requirements](#21-requirements)
-        1. [Hard requirements](#211-hard-requirements)
-        2. [Requirements with bundled fallbacks](#212-requirements-with-bundled-fallbacks)
-    2. [Optional components](#22-optional-components)
-    3. [Building libEBML and libMatroska](#23-building-libebml-and-libmatroska)
-    4. [Building MKVToolNix](#24-building-mkvtoolnix)
-        1. [Getting and building a development snapshot](#241-getting-and-building-a-development-snapshot)
-        2. [Configuration and compilation](#242-configuration-and-compilation)
-    5. [Notes for compilation on (Open)Solaris](#25-notes-for-compilation-on-opensolaris)
-    6. [Unit tests](#26-unit-tests)
+2. [Building MKVToolNix-Mod](#2-building-mkvtoolnix-mod)
+    1. [What the host needs](#21-what-the-host-needs)
+    2. [Building](#22-building)
+    3. [Unit tests](#23-unit-tests)
 3. [Reporting bugs & security issues & getting support](#3-reporting-bugs-security-issues-getting-support)
     1. [Reporting bugs](#31-reporting-bugs)
     2. [Reporting seucrity issues)(#32-reporting-security-issues)
     3. [Getting support](#33-getting-support)
-4. [Test suite and continuous integration tests](#4-test-suite-and-continuous-integration-tests)
+4. [Tests](#4-tests)
 5. [Code of Conduct](#5-code-of-conduct)
 6. [Included third-party components and their licenses](#6-included-third-party-components-and-their-licenses)
     1. [avilib](#61-avilib)
@@ -65,198 +58,63 @@ https://mkvtoolnix.download/
 Moritz Bunkus <mo@bunkus.online>
 
 
-# 2. Installation
+# 2. Building MKVToolNix-Mod
 
-If you want to compile the tools yourself, you must first decide
-if you want to use a 'proper' release version or the current
-development version. As both Matroska and MKVToolNix are under heavy
-development, there might be features available in the git repository
-that are not available in the releases. On the other hand the git
-repository version might not even compile.
+MKVToolNix-Mod is MKVToolNix 103.0 with the changes listed in
+[MOD_CHANGES.md](MOD_CHANGES.md). It builds on Linux, with make, from
+one script; the old rake build and the other platforms are not part of
+it.
 
-## 2.1. Requirements
+## 2.1. What the host needs
 
-### 2.1.1. Hard requirements
+The libraries MKVToolNix is built on are in `libs/` (our copies of
+their releases, see [libs/README.md](libs/README.md)) and are built
+and linked in statically. From the host come Qt 6 (base, Multimedia,
+SVG), Boost (headers and `filesystem`), the C / C++ runtime and the
+build tools. `build.sh` checks for them and names the missing Debian /
+Ubuntu packages:
 
-In order to compile MKVToolNix, you need a couple of libraries. Most of
-them should be available pre-compiled for your distribution. The
-programs and libraries you absolutely need are:
+    gcc g++ make cmake meson ninja-build pkg-config rsync git autoconf
+    automake m4 xsltproc gzip binutils docbook-xsl libboost-dev
+    libboost-filesystem-dev qt6-base-dev qt6-base-dev-tools
+    qt6-multimedia-dev qt6-svg-dev
 
-- A C++ compiler that supports the C++20 standard or newer. For GCC
-  this means at least v10; for clang v10 or later.
+and for the packages also `dpkg-dev`.
 
-- [libOgg](http://downloads.xiph.org/releases/ogg/) and
-  [libVorbis](http://downloads.xiph.org/releases/vorbis/) for access to Ogg/OGM
-  files and Vorbis support
+## 2.2. Building
 
-- [zlib](http://www.zlib.net/) — a compression library
+    ./build.sh            # debug build   -> dist/debug/
+    ./build.sh release    # release build -> dist/release/
+    ./build.sh test       # debug build of the unit tests, then runs them
+    ./build.sh deb        # release build, then the packages -> dist/deb/
+    ./build.sh clean      # removes build/ and dist/
 
-- [Boost](http://www.boost.org/) — Several of Boost's libraries are
-  used, e.g. `filesystem`, `multi-precision`, `operators`,
-  `system`. At least v1.74.0 is required.
+`dist/<mode>/` holds the six programs, flat: `mkvmerge`, `mkvinfo`,
+`mkvextract`, `mkvpropedit`, `mkvtoolnix-gui` and `mkvextract-gui`. A
+release build has no debug information and is stripped; the GUI's
+icons are built into it.
 
-Furthermore you need to have several programs installed:
+`dist/deb/` holds the packages `mkvtoolnix` and `mkvtoolnix-gui`
+(version `1:103.0-1mod1`), which install like the distribution's own
+packages (`sudo apt install ./dist/deb/*.deb`). The GUI's sounds and
+the man pages come with them.
 
-- [libxslt's xsltproc binary](http://xmlsoft.org/libxslt/) and
-  [DocBook XSL stylesheets](https://sourceforge.net/projects/docbook/files/docbook-xsl/)
-  — for creating man pages from XML documents
+Everything else stays in `build/<mode>/`: the libraries (`prefix/`),
+MKVToolNix's configure output, generated sources and objects, the
+programs with the helper tools and the unit tests (`bin/`), and the
+install tree the packages are made from (`stage/`). The source tree
+and `libs/` are never written to. Running `build.sh` again rebuilds
+only what changed. The GUI's online update check is always off.
 
-- [Inkscape](https://inkscape.org) and
-  [ImageMagick](https://imagemagick.org/) — for converting SVG icons
-  into different types
+## 2.3. Unit tests
 
-You also need the `rake` or `drake` build program. I suggest `rake`
-v10.0.0 or newer (this is included with Ruby 2.1) as it offers
-parallel builds out of the box. If you only have an earlier version of
-`rake`, you can install and use the `drake` gem for the same gain.
+The unit tests are in `tests/unit/` (Google Test, from `libs/`), one
+program per part: `common`, `merge`, `propedit` and `gui`.
+`./build.sh test` builds and runs them all. To build them without
+running them, and to run a part of them:
 
-### 2.1.2. Requirements with bundled fallbacks
-
-Several required libraries might not be available for your
-distribution. Therefore they're bundled with the MKVToolNix source
-code. The `configure` script will look for those libraries and use
-existing versions if present. If not, the bundled versions are used
-instead.
-
-It is highly recommended to install the versions provided by your
-distribution instead of relying on the bundled versions.
-
-These libraries are:
-
-- [fmt](http://fmtlib.net/) — a small, safe and fast formatting
-  library. Version 8.0.0 or later is required.
-
-- [libEBML v1.4.7](http://dl.matroska.org/downloads/libebml/) or later
-  and [libMatroska v1.7.2](http://dl.matroska.org/downloads/libmatroska/)
-  or later for low-level access to Matroska files. Instructions on how to
-  compile them are a bit further down in this file.
-
-- [librmff](https://www.bunkus.org/videotools/librmff/index.html) — a
-  library for accessing RealMedia files
-
-- [nlohmann's JSON](https://github.com/nlohmann/json) — JSON for
-  Modern C++
-
-- [Qt](http://www.qt.io/) v6.2.0 or newer — a cross-platform library
-  including a UI toolkit. The library is needed for all programs, even
-  if you decide not to build MKVToolNix GUI.
-
-- [pugixml](http://pugixml.org/) — light-weight, simple and fast XML
-  parser for C++ with XPath support
-
-- [utf8-cpp](http://utfcpp.sourceforge.net/) — UTF-8 with C++ in a
-  Portable Way
-
-## 2.2. Optional components
-
-Other libraries are optional and only limit the features that are
-built. These include:
-
-- [cmark](https://github.com/commonmark/cmark) — the CommonMark
-  parsing and rendering library in C is required when building
-  MKVToolNix GUI.
-
-- [libFLAC](http://downloads.xiph.org/releases/flac/) for FLAC
-  support (Free Lossless Audio Codec)
-
-- [po4a](https://www.po4a.org/) for building the translated man pages
-
-## 2.3. Building libEBML and libMatroska
-
-This is optional as MKVToolNix comes with its own set of the
-libraries. It will use them if no version is found on the system.
-
-Start by either downloading the latest releases of
-[libEBML](http://dl.matroska.org/downloads/libebml/) and
-[libMatroska](http://dl.matroska.org/downloads/libmatroska/) or by
-getting fresh copies from their git repositories:
-
-    git clone https://github.com/Matroska-Org/libebml.git
-    git clone https://github.com/Matroska-Org/libmatroska.git
-
-First build and install libEBML according to the included
-instructions. Afterwards do the same for libMatroska.
-
-## 2.4. Building MKVToolNix
-
-Either download the current release from
-[the MKVToolNix home page](https://mkvtoolnix.download/)
-and unpack it or get a development snapshot from my Git repository.
-
-### 2.4.1. Getting and building a development snapshot
-
-You can ignore this subsection if you want to build from a release
-tarball.
-
-All you need for Git repository access is to download a Git client
-from the Git homepage at http://git-scm.com/. There are clients
-for both Unix/Linux and Windows.
-
-First clone my Git repository with this command:
-
-    git clone https://codeberg.org/mbunkus/mkvtoolnix.git
-
-Now change to the MKVToolNix directory with `cd mkvtoolnix` and run
-`./autogen.sh` which will generate the "configure" script. You need
-the GNU "autoconf" utility for this step.
-
-### 2.4.2. Configuration and compilation
-
-If you have run `make install` for both libraries, then `configure`
-should automatically find the libraries' position. Otherwise you need
-to tell `configure` where the libEBML and libMatroska include and
-library files are:
-
-    ./configure \
-      --with-extra-includes=/where/i/put/libebml\;/where/i/put/libmatroska \
-      --with-extra-libs=/where/i/put/libebml/make/linux\;/where/i/put/libmatroska/make/linux
-
-Now run `rake` and, as "root", `rake install`.
-
-### 2.4.3. If things go wrong
-
-By default the commands executed by the build system aren't
-output. You can change that by adding `V=1` as an argument to the
-`rake` command.
-
-If `rake` executes too many processes at once, then you've stumbled
-across a known bug in `rake`. In that case you should install the
-`drake` Ruby gem and use the command `drake` instead of
-`rake`. `drake` supports parallelism properly and doesn't try to
-execute all jobs at once.
-
-## 2.5. Notes for compilation on (Open)Solaris
-
-You can compile MKVToolNix with Sun's sunstudio compiler, but you need
-additional options for `configure`:
-
-    ./configure --prefix=/usr \
-      CXX="/opt/sunstudio12.1/bin/CC -library=stlport4" \
-      CXXFLAGS="-D_POSIX_PTHREAD_SEMANTICS" \
-      --with-extra-includes=/where/i/put/libebml\;/where/i/put/libmatroska \
-      --with-extra-libs=/where/i/put/libebml/make/linux\;/where/i/put/libmatroska/make/linux
-
-## 2.6. Unit tests
-
-Building and running unit tests is completely optional. If you want to
-do this, you have to follow these steps:
-
-1. Download the "googletest" framework from
-   https://github.com/google/googletest/ (at the time of writing the
-   file to download was "googletest-release-1.8.0.tar.gz")
-
-2. Extract the archive somewhere and create a symbolic link to its
-   `googletest-release-1.8.0/googletest` sub-directory
-   inside MKVToolNix' `lib` directory and call it `gtest`, e.g. like this:
-
-   `ln -s /path/to/googletest-release-1.8.0/googletest lib/gtest`
-
-3. Configure MKVToolNix normally.
-
-4. Build the unit test executable and run it with
-
-        rake tests:run_unit
-
+    make -f mk/main.mk MODE=debug mtx-tests
+    build/debug/bin/tests/common --gtest_filter='FrameClock*'
 
 # 3. Reporting bugs & security issues & getting support
 
@@ -301,38 +159,12 @@ find in the following places:
   MKVToolNix author Moritz Bunkus is known as "mosu" there.
 
 
-# 4. Test suite and continuous integration tests
+# 4. Tests
 
-MKVToolNix contains a lot of test cases in order to detect regressions
-before they're released. Regressions include both compilation issues
-as well as changes from expected program behavior.
-
-As mentioned in section 2.6., MKVToolNix comes with a set of unit
-tests based on the Google Test library in the `tests/unit`
-sub-directory that you can run yourself. These cover only a small
-amount of code, and any effort to extend them would be most welcome.
-
-A second test suite exists that targets the program behavior, e.g. the
-output generated by mkvmerge when specific options are used with
-specific input files. These are the test cases in the `tests`
-directory itself. Unfortunately the files they run on often contain
-copyrighted material that I cannot distribute. Therefore you cannot
-run them yourself.
-
-A third pillar of the testing effort is the
-[continuous integration tests](https://buildbot.mkvtoolnix.download/)
-run on a Buildbot instance. These are run automatically for each
-commit made to the git repository. The tests include:
-
-  * building of all the packages for Linux distributions that I
-    normally provide for download myself in both 32-bit and 64-bit
-    variants
-  * building of the Windows installer and portable packages in both
-    32-bit and 64-bit variants
-  * building with both g++ and clang++
-  * building and running the unit tests
-  * building and running the test file test suite
-  * building with all optional features disabled
+The unit tests in `tests/unit/` (section 2.3) are MKVToolNix-Mod's test
+suite. Upstream's second suite, which checks the programs' output on
+sample files, needs files that are not public and is not part of
+MKVToolNix-Mod, nor is upstream's continuous integration.
 
 # 5. Code of Conduct
 
