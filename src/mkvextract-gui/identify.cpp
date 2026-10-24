@@ -15,6 +15,8 @@
 #include <QJsonObject>
 #include <QProcess>
 
+#include <cmath>
+
 #include "mkvextract-gui/identify.h"
 
 using namespace Qt::StringLiterals;
@@ -25,6 +27,20 @@ QString
 toolPath(QString const &name) {
   auto next = QCoreApplication::applicationDirPath() + u'/' + name;
   return QFileInfo{next}.isExecutable() ? next : name;
+}
+
+std::optional<qint64>
+effectiveDelay(FileInfo const &info,
+               Track const &track) {
+  auto video = std::find_if(info.tracks.begin(), info.tracks.end(), [](auto const &t) { return t.type == u"video"_s; });
+  if (!track.minimumTimestamp)
+    return {};
+  if (video == info.tracks.end())
+    return 0;
+  if (!video->minimumTimestamp)
+    return {};
+
+  return std::llround(static_cast<double>(*track.minimumTimestamp - *video->minimumTimestamp) / 1'000'000);
 }
 
 std::optional<FileInfo>
@@ -64,6 +80,7 @@ identify(QString const &path,
     track.number            = properties.value(u"number"_s).toInt();
     track.codecId           = properties.value(u"codec_id"_s).toString();
     track.language          = properties.value(u"language"_s).toString();
+    track.languageIetf      = properties.value(u"language_ietf"_s).toString();
     track.name              = properties.value(u"track_name"_s).toString();
     track.forced            = properties.value(u"forced_track"_s).toBool();
     track.isDefault         = properties.value(u"default_track"_s).toBool();

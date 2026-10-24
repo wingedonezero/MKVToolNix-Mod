@@ -20,7 +20,7 @@ namespace mtx::extract_gui {
 struct Track {
   int id{}, number{};
   QString type;                 // video, audio, subtitles, buttons
-  QString codec, codecId, language, name;
+  QString codec, codecId, language, languageIetf, name;
   bool forced{}, isDefault{};
   std::optional<qint64> minimumTimestamp; // ns: the track's first timestamp
   QString pixelDimensions;
@@ -39,11 +39,15 @@ struct FileInfo {
   QList<Track> tracks;
   QList<Attachment> attachments;
   int chapterEntries{}, globalTagEntries{}, trackTagEntries{};
-  bool hasCueSheet() const { return chapterEntries > 0; }
 };
 
 // the mkvmerge (or mkvextract) next to this program, else the one in PATH
 QString toolPath(QString const &name);
+
+// The audio delay a track's name shows: its first timestamp minus the first
+// video track's, rounded to the nearest ms (no video: 0); none when a
+// timestamp is not known.
+std::optional<qint64> effectiveDelay(FileInfo const &info, Track const &track);
 
 // Runs mkvmerge -J on path; on failure error says why.
 std::optional<FileInfo> identify(QString const &path, QString &error);

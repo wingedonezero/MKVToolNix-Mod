@@ -29,8 +29,6 @@
 #include <QTreeWidget>
 #include <QVBoxLayout>
 
-#include <cmath>
-
 #include "mkvextract-gui/main_window.h"
 
 using namespace Qt::StringLiterals;
@@ -52,23 +50,11 @@ formatDuration(qint64 ns) {
 
 }
 
-std::optional<qint64>
-effectiveDelay(FileInfo const &info,
-               Track const &track) {
-  auto video = std::find_if(info.tracks.begin(), info.tracks.end(), [](auto const &t) { return t.type == u"video"_s; });
-  if (!track.minimumTimestamp)
-    return {};
-  if (video == info.tracks.end())
-    return 0;                   // no video: nothing to be late against (as gMKVExtractGUI)
-  if (!video->minimumTimestamp)
-    return {};
-
-  return std::llround(static_cast<double>(*track.minimumTimestamp - *video->minimumTimestamp) / 1'000'000);
-}
-
 MainWindow::MainWindow(QWidget *parent)
   : QMainWindow{parent}
+  , m_runner{new Runner{this}}
 {
+  m_patterns.load();
   setupUi();
   setAcceptDrops(true);
 }
@@ -173,7 +159,7 @@ MainWindow::setupUi() {
   statusBar()->addPermanentWidget(m_abortAll);
   statusBar()->addPermanentWidget(m_abort);
 
-  for (auto button : { m_log, m_jobs, m_addJobs, m_extract, m_options, m_abortAll, m_abort })
+  for (auto button : { m_log, m_jobs, m_addJobs, m_options, m_abortAll, m_abort })
     button->setEnabled(false);
 
   connect(addButton,         &QPushButton::clicked,                  this, [this]() {
@@ -185,6 +171,125 @@ MainWindow::setupUi() {
   connect(m_useSource,       &QCheckBox::toggled,                    this, &MainWindow::setOutputFolderOfSelectedFile);
   connect(m_outputFolder,    &QLineEdit::editingFinished,            this, &MainWindow::setOutputFolderOfSelectedFile);
   connect(m_browse,          &QPushButton::clicked,                  this, &MainWindow::browseOutputFolder);
+  connect(m_extract,         &QPushButton::clicked,                  this, &MainWindow::extract);
+  connect(m_abort,           &QPushButton::clicked,                  m_runner, &Runner::abort);
+  connect(m_abortAll,        &QPushButton::clicked,                  m_runner, &Runner::abortAll);
+  connect(m_runner,          &Runner::jobStarted,                    this, &MainWindow::jobStarted);
+  connect(m_runner,          &Runner::jobFinished,                   this, &MainWindow::jobFinished);
+  connect(m_runner,          &Runner::finished,                      this, &MainWindow::allFinished);
+  connect(m_runner,          &Runner::progress,                      m_progress, &QProgressBar::setValue);
+  connect(m_runner,          &Runner::line,                          this, [this](QString const &text) { m_logLines << text; });
+
+  showSelectedFile();
+}
+
+QString
+MainWindow::outputFolder(InputFile const &file)
+  const {
+  return file.useSourceFolder ? QFileInfo{file.info.path}.absolutePath() : file.outputFolder;
+}
+
+Selection
+MainWindow::selection(int fileIndex)
+  const {
+  Selection result;
+  auto fileItem = m_tree->topLevelItem(fileIndex);
+
+  for (int idx = 0, num = fileItem->childCount(); idx < num; ++idx) {
+    auto item = fileItem->child(idx);
+    if (item->checkState(0) != Qt::Checked)
+      continue;
+
+    auto index = item->data(0, IndexRole).toInt();
+    switch (static_cast<ItemKind>(item->data(0, KindRole).toInt())) {
+      case ItemKind::Track:      result.tracks      << index; break;
+      case ItemKind::Attachment: result.attachments << index; break;
+      case ItemKind::Chapters:   result.chapters     = true;  break;
+      case ItemKind::Tags:       result.tags         = true;  break;
+      default:                                                break;
+    }
+  }
+
+  return result;
+}
+
+Options
+MainWindow::options()
+  const {
+  Options result;
+  result.mode          = static_cast<ExtractMode>(m_extractMode->currentIndex());
+  result.chapterFormat = static_cast<ChapterFormat>(m_chapterFormat->currentIndex());
+  result.overwrite     = m_overwrite->isChecked();
+  return result;
+}
+
+QList<Job>
+MainWindow::jobsForCheckedItems() {
+  QList<Job> jobs;
+
+  for (int idx = 0, num = m_files.size(); idx < num; ++idx) {
+    auto chosen = selection(idx);
+    if (!chosen.empty())
+      jobs << makeJob(m_files[idx].info, outputFolder(m_files[idx]), chosen, options(), m_patterns);
+  }
+
+  return jobs;
+}
+
+void
+MainWindow::extract() {
+  if (m_runner->running())
+    return;
+
+  m_running = jobsForCheckedItems();
+  if (m_running.isEmpty()) {
+    QMessageBox::information(this, tr("Nothing to extract"), tr("Check the tracks, chapters, attachments or tags to extract first."));
+    return;
+  }
+
+  setRunning(true);
+  m_totalProgress->setRange(0, m_running.size());
+  m_totalProgress->setValue(0);
+  m_runner->run(m_running);
+}
+
+void
+MainWindow::setRunning(bool running) {
+  for (QWidget *widget : std::initializer_list<QWidget *>{ m_extract, m_tree })
+    widget->setEnabled(!running);
+  m_abort->setEnabled(running);
+  m_abortAll->setEnabled(running);
+}
+
+void
+MainWindow::jobStarted(int index) {
+  statusBar()->showMessage(tr("Extracting %1 (%2 of %3)").arg(m_running[index].description).arg(index + 1).arg(m_running.size()));
+}
+
+void
+MainWindow::jobFinished(int index) {
+  m_totalProgress->setValue(index + 1);
+}
+
+void
+MainWindow::allFinished() {
+  setRunning(false);
+  statusBar()->clearMessage();
+
+  QStringList problems;
+  int done = 0;
+  for (auto const &job : m_running) {
+    if (job.status == Job::Status::Done)
+      ++done;
+    else
+      problems << u"%1: %2"_s.arg(QFileInfo{job.file}.fileName(), job.status == Job::Status::Aborted ? tr("aborted") : job.status == Job::Status::Failed ? tr("failed") : tr("not run"));
+  }
+
+  auto text = tr("%1 of %2 file(s) extracted.").arg(done).arg(m_running.size());
+  if (problems.isEmpty())
+    QMessageBox::information(this, tr("Extraction done"), text);
+  else
+    QMessageBox::warning(this, tr("Extraction done"), text + u"\n\n"_s + problems.join(u'\n') + u"\n\n"_s + m_logLines.mid(std::max<qsizetype>(0, m_logLines.size() - 10)).join(u'\n'));
 }
 
 void

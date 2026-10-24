@@ -12,7 +12,7 @@
 
 #include <QMainWindow>
 
-#include "mkvextract-gui/identify.h"
+#include "mkvextract-gui/extractor.h"
 
 class QCheckBox;
 class QComboBox;
@@ -41,6 +41,10 @@ public:
 
 protected:
   QList<InputFile> m_files;
+  Patterns m_patterns;
+  QList<Job> m_running;         // the jobs Extract started
+  Runner *m_runner{};
+  QStringList m_logLines;
 
   QTreeWidget *m_tree{};
   QCheckBox *m_appendOnDrop{}, *m_overwrite{}, *m_useSource{};
@@ -68,12 +72,18 @@ protected:
   void showTreeContextMenu(QPoint const &pos);
   void setChecked(ItemKind kind, QString const &trackType, bool checked);
 
+  void extract();
+  void jobStarted(int index);
+  void jobFinished(int index);
+  void allFinished();
+  void setRunning(bool running);
+  QList<Job> jobsForCheckedItems();
+  Selection selection(int fileIndex) const;
+  Options options() const;
+  QString outputFolder(InputFile const &file) const;
+
   int selectedFileIndex() const;
   QString itemText(InputFile const &file, Track const &track) const;
 };
-
-// The audio delay a track's name shows: its first timestamp minus the first
-// video track's, rounded to the nearest ms; none when either is not known.
-std::optional<qint64> effectiveDelay(FileInfo const &info, Track const &track);
 
 }
