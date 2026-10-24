@@ -192,7 +192,7 @@ link = $(MTX_CXX) $(MTX_LDFLAGS) -o $@ $(1)
 $(BIN)/mkvmerge: $(OBJ)/src/merge/mkvmerge.o $(foreach l,mtxmerge mtxinput mtxoutput mtxcommon avi rmff mpegparser,$(call LIB,$(l)))
 	@mkdir -p $(dir $@)
 	$(call link,$< $(call LIB,mtxmerge) $(call LIB,mtxinput) $(call LIB,mtxoutput) $(call LIB,mtxmerge) $(COMMON_CLI) \
-	  $(call LIB,avi) $(call LIB,rmff) $(call LIB,mpegparser) -lvorbis -logg $(MTX_LINK_STATICALLY))
+	  $(call LIB,avi) $(call LIB,rmff) $(call LIB,mpegparser) $(call LIB,mtxcommon) -lgmp -lvorbis -logg $(MTX_LINK_STATICALLY))
 $(BIN)/mkvinfo: $(call obj_of,$(call for_linux,$(call rel,$(call files_in,src/info)))) $(call LIB,mtxcommon)
 	@mkdir -p $(dir $@)
 	$(call link,$(filter %.o,$^) $(COMMON_CLI) $(MTX_LINK_STATICALLY))

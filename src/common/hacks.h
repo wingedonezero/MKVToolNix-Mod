@@ -50,7 +50,8 @@ constexpr unsigned int ALWAYS_WRITE_BLOCK_ADD_IDS         = 25;
 constexpr unsigned int KEEP_DOLBY_VISION_LAYERS_SEPARATE  = 26;
 constexpr unsigned int KEEP_BSID910_IN_AC3_CODECID        = 27;
 constexpr unsigned int NORMALIZE_PARAMETER_SETS           = 28;
-constexpr unsigned int MAX_IDX                            = 28;
+constexpr unsigned int CUT_FRAME_DURATIONS                = 29;
+constexpr unsigned int MAX_IDX                            = 29;
 }
 
 struct hack_t {

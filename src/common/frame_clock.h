@@ -31,6 +31,7 @@ public:
   // The length of one unit: num / den seconds. A different length restarts
   // the count at the current timestamp.
   void set_unit(int64_t num, int64_t den);
+  void set_unit(mtx_mp_rational_t const &seconds);
   bool has_unit() const;
 
   // A timestamp given by the container: the count restarts there.

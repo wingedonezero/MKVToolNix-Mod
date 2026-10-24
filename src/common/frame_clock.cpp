@@ -18,7 +18,12 @@ namespace mtx {
 void
 frame_clock_c::set_unit(int64_t num,
                         int64_t den) {
-  auto unit_length = mtx::rational(num, den) * 1'000'000'000;
+  set_unit(mtx::rational(num, den));
+}
+
+void
+frame_clock_c::set_unit(mtx_mp_rational_t const &seconds) {
+  auto unit_length = seconds * 1'000'000'000;
   if (unit_length == m_unit_length)
     return;
 

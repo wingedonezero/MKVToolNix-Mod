@@ -71,6 +71,8 @@ get_list() {
   hacks.emplace_back("keep_dolby_vision_layers_separate",  svec{ Y("Prevents mkvmerge from looking for Dolby Vision Enhancement Layers stored in a separate track & combining them with the track containing the Dolby Vision Base Layer.") });
   hacks.emplace_back("keep_bsid_9_10_in_ac3_codec_id",     svec{ Y("Causes mkvmerge to use the codec IDs A_AC3/BSID9 & A_AC3/BSID10 instead of A_AC3 for AC-3 tracks with BSIDs of 9 or 10 like older versions of mkvmerge did.") });
   hacks.emplace_back("normalize_parameter_sets",           svec{ Y("Causes the HEVC/H.265 code in mkvmerge and mkvextract to prefix all key frames with all currently active parameter sets and to remove duplicates that might already be present, as earlier versions did by default.") });
+  hacks.emplace_back("cut_frame_durations",                svec{ Y("Video frames without a container timestamp (e.g. from elementary stream files) are normally timed by counting fields or frames from the last known timestamp, each timestamp worked out exactly and rounded to the nearest nanosecond."),
+                                                                 Y("If this hack is enabled, mkvmerge adds up frame durations cut to whole nanoseconds as earlier versions did, which makes the timestamps fall slowly behind the stream's own clock.") });
   hacks.emplace_back("cow",                                svec{ Y("No help available.") });
 
   return hacks;
