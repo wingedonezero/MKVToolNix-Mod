@@ -203,6 +203,8 @@ es_parser_c::handle_slice_nalu(memory_cptr const &nalu,
   m_incomplete_frame.m_position    =  nalu_pos;
   m_recovery_point_valid           =  false;
 
+  m_incomplete_frame.m_si.pic_struct = pic_struct_for(si);
+
   if (m_incomplete_frame.m_keyframe) {
     mxdebug_if(m_debug_keyframe_detection,
                fmt::format("AVC:handle_slice_nalu: have incomplete? {0} current is {1} incomplete key bottom field? {2}\n",
@@ -369,6 +371,12 @@ es_parser_c::handle_sei_nalu(memory_cptr const &nalu) {
       if (6 == ptype)                               // recovery point
         m_recovery_point_valid = true;
 
+      else if (1 == ptype) {                        // picture timing: read once the frame's SPS is known
+        auto offset      = payload_start / 8;
+        auto const size  = nalu_as_rbsp->get_size();
+        m_picture_timing = memory_c::clone(nalu_as_rbsp->get_buffer() + std::min<uint64_t>(offset, size), std::min<uint64_t>(psize, size - std::min<uint64_t>(offset, size)));
+      }
+
       else if ((45 == ptype) && !m_stereo_mode)     // frame packing arrangement
         m_stereo_mode = mtx::xyzvc::parse_frame_packing_arrangement(r);
 
@@ -530,11 +538,47 @@ es_parser_c::duration_for(mtx::xyzvc::slice_info_t const &si)
   return duration_for_impl(si.sps, si.field_pic_flag);
 }
 
+// The pic_struct of the frame starting with slice si, from the picture
+// timing SEI message before it (H.264 D.1.3, D.2.3) read with the frame's
+// SPS; -1 without one (or a broken one).
+int
+es_parser_c::pic_struct_for(mtx::xyzvc::slice_info_t const &si) {
+  auto picture_timing = std::move(m_picture_timing);
+
+  if (m_sps_info_list.size() <= si.sps)
+    return -1;
+
+  auto const &sps = m_sps_info_list[si.sps];
+  if (!sps.pic_struct_present)
+    return -1;
+
+  if (!picture_timing) {
+    ++m_num_frames_without_picture_timing;
+    return -1;
+  }
+
+  try {
+    mtx::bits::reader_c r(picture_timing->get_buffer(), picture_timing->get_size());
+    if (sps.hrd_present)
+      r.skip_bits(sps.cpb_removal_delay_length + sps.dpb_output_delay_length);
+    auto pic_struct = r.get_bits(4);
+    if (pic_struct <= 8)
+      return pic_struct;
+  } catch (...) {
+  }
+
+  ++m_num_frames_without_picture_timing;
+  return -1;
+}
+
 mtx::xyzvc::frame_timing_t
 es_parser_c::timing_for(mtx::xyzvc::slice_info_t const &si)
   const {
-  // units: fields (a frame picture lasts two)
-  int64_t units = si.field_pic_flag ? 1 : 2;
+  // units: fields; pic_struct gives them (H.264 Table D-1: a frame, a field,
+  // two, three with a repeated field, four / six for frame doubling /
+  // tripling), else a field picture lasts one, a frame picture two
+  static int64_t const s_fields_by_pic_struct[9] = { 2, 1, 1, 2, 2, 3, 3, 4, 6 };
+  int64_t units = 0 <= si.pic_struct ? s_fields_by_pic_struct[si.pic_struct] : si.field_pic_flag ? 1 : 2;
 
   if (-1 != m_forced_default_duration)
     return { m_forced_default_duration, 1'000'000'000, units };

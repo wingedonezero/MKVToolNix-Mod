@@ -392,6 +392,12 @@ es_parser_c::get_num_skipped_frames()
   return m_num_skipped_frames;
 }
 
+int
+es_parser_c::get_num_frames_without_picture_timing()
+  const {
+  return m_num_frames_without_picture_timing;
+}
+
 int64_t
 es_parser_c::get_most_often_used_duration()
   const {
@@ -560,7 +566,13 @@ es_parser_c::update_frame_stats() {
   for (auto &frame : m_frames) {
     mxdebug_if(m_debug_timestamps, fmt::format("  type {0} TS {1} size {2} pos 0x{3:x} ref1 {4} ref2 {5}\n", frame.m_type, mtx::string::format_timestamp(frame.m_start), frame.get_data_size(), frame.m_position, frame.m_ref1, frame.m_ref2));
 
-    ++m_duration_frequency[frame.m_end - frame.m_start];
+    // The track's default duration is taken from the most frequent frame
+    // length. Frames timed by counting add the stream's own length for them
+    // (duration_for(): a frame of two fields, a field picture one field), not
+    // what pic_struct makes them last: a soft-pulldown stream keeps its own
+    // frame rate there, as an MPEG-2 one does, and its frames carry their
+    // real lengths in their blocks.
+    ++m_duration_frequency[frame.m_has_provided_timestamp ? frame.m_end - frame.m_start : duration_for(frame.m_si)];
 
     if (frame.m_si.field_pic_flag)
       ++m_stats.num_field_slices;

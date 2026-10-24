@@ -123,6 +123,12 @@ void
 xyzvc_es_video_packetizer_c::flush_impl() {
   m_parser_base->flush();
   flush_frames();
+
+  if (0 < m_parser_base->get_num_frames_without_picture_timing())
+    mxwarn_tid(m_ti.m_fname, m_ti.m_id,
+               fmt::format(FY("{0} frames of this AVC/H.264 track have no readable picture timing SEI although the stream signals pic_struct. "
+                              "They have been timed as two fields each (one per field picture).\n"),
+                           m_parser_base->get_num_frames_without_picture_timing()));
 }
 
 int64_t

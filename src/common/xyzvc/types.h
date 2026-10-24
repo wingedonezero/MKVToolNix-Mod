@@ -36,6 +36,7 @@ public:
   unsigned int delta_pic_order_cnt_bottom{};
   unsigned int delta_pic_order_cnt[2]{};
   unsigned int first_mb_in_slice{};
+  int pic_struct{-1};           // from the picture timing SEI; -1: none
 
   // HEVC-specific fields:
   bool first_slice_segment_in_pic_flag{};

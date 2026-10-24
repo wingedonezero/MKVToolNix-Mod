@@ -41,7 +41,7 @@ protected:
   bool m_configuration_record_ready{}, m_configuration_record_changed{};
 
   int64_t m_stream_default_duration{-1}, m_forced_default_duration{-1}, m_container_default_duration{-1};
-  int m_frame_number{}, m_num_skipped_frames{};
+  int m_frame_number{}, m_num_skipped_frames{}, m_num_frames_without_picture_timing{};
   bool m_first_keyframe_found{}, m_recovery_point_valid{}, m_b_frames_since_keyframe{};
 
   std::optional<stereo_mode_c::mode> m_stereo_mode;
@@ -136,6 +136,7 @@ public:
   int64_t get_most_often_used_duration() const;
 
   int get_num_skipped_frames() const;
+  int get_num_frames_without_picture_timing() const;
 
   void discard_actual_frames(bool discard = true);
 

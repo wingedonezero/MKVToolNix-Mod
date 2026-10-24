@@ -76,6 +76,11 @@ struct sps_info_t {
   // timing_info:
   timing_info_t timing_info{};
 
+  // what a picture timing SEI message holds (H.264 D.1.3): its delays (with
+  // HRD parameters) and its pic_struct (with pic_struct_present_flag)
+  bool hrd_present{}, pic_struct_present{};
+  unsigned int cpb_removal_delay_length{}, dpb_output_delay_length{};
+
   unsigned int crop_left{}, crop_top{}, crop_right{}, crop_bottom{};
   unsigned int width{}, height{};
 

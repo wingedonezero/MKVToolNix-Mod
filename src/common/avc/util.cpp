@@ -67,7 +67,8 @@ par_extraction_t::is_valid()
 
 static void
 hrdcopy(mtx::bits::reader_c &r,
-        mtx::bits::writer_c &w) {
+        mtx::bits::writer_c &w,
+        sps_info_t &sps) {
   int ncpb = w.copy_unsigned_golomb(r); // cpb_cnt_minus1
   w.copy_bits(4, r);                    // bit_rate_scale
   w.copy_bits(4, r);                    // cpb_size_scale
@@ -77,8 +78,8 @@ hrdcopy(mtx::bits::reader_c &r,
     w.copy_bits(1, r);                  // cbr_flag
   }
   w.copy_bits(5, r);                    // initial_cpb_removal_delay_length_minus1
-  w.copy_bits(5, r);                    // cpb_removal_delay_length_minus1
-  w.copy_bits(5, r);                    // dpb_output_delay_length_minus1
+  sps.cpb_removal_delay_length = w.copy_bits(5, r) + 1; // cpb_removal_delay_length_minus1
+  sps.dpb_output_delay_length  = w.copy_bits(5, r) + 1; // dpb_output_delay_length_minus1
   w.copy_bits(5, r);                    // time_offset_length
 }
 
@@ -407,16 +408,17 @@ parse_sps_impl(memory_cptr const &buffer,
 
     bool f = false;
     if (w.copy_bits(1, r) == 1) { // nal_hrd_parameters_present
-      hrdcopy(r, w);
+      hrdcopy(r, w, sps);
       f = true;
     }
     if (w.copy_bits(1, r) == 1) { // vcl_hrd_parameters_present
-      hrdcopy(r, w);
+      hrdcopy(r, w, sps);
       f = true;
     }
     if (f)
       w.copy_bits(1, r);        // low_delay_hrd_flag
-    w.copy_bits(1, r);          // pic_struct_present
+    sps.hrd_present        = f;
+    sps.pic_struct_present = w.copy_bits(1, r); // pic_struct_present
 
     if (w.copy_bits(1, r) == 1) { // bitstream_restriction
       w.copy_bits(1, r);          // motion_vectors_over_pic_boundaries_flag

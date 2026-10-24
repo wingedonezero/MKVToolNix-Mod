@@ -33,6 +33,7 @@ protected:
   std::vector<pps_info_t> m_pps_info_list;
 
   bool m_all_i_slices_are_key_frames{}, m_have_incomplete_frame{};
+  memory_cptr m_picture_timing; // the payload of the latest picture timing SEI message, for the next frame
 
   debugging_option_c m_debug_sps_pps_changes{"avc_parser|avc_sps_pps_changes"}, m_debug_errors{"avc_parser|avc_errors"};
 
@@ -89,6 +90,7 @@ protected:
   memory_cptr create_nalu_with_size(const memory_cptr &src, bool add_extra_data = false);
 
   int64_t duration_for_impl(unsigned int sps, bool field_pic_flag) const;
+  int pic_struct_for(mtx::xyzvc::slice_info_t const &si);
   virtual void calculate_frame_order() override;
   virtual bool does_nalu_get_included_in_extra_data(memory_c const &nalu) const override;
 
