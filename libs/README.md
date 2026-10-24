@@ -14,8 +14,11 @@ behaviour it is edited directly; nothing is kept as a patch series.
 From the host instead (not in here): Qt 6 (base, Multimedia, SVG), Boost
 (headers + filesystem), the C / C++ runtime, and the build tools.
 
-`libs/.gitignore` (ours) re-includes every file, so that MKVToolNix's own
-ignore patterns (`*.1`, `*.o`, `*.exe`, ...) cannot leave a library file out.
+Every file of a release is added with `git add -f`, so neither MKVToolNix's
+ignore patterns (`*.1`, `*.o`, `*.exe`, ...) nor a library's own
+`.gitignore` (libmatroska's ignores its `Makefile`s) can leave a file out;
+`libs/.gitignore` (ours) re-includes everything against the top-level
+patterns for later edits.
 
 ## What is changed today
 
