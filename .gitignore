@@ -107,7 +107,6 @@
 /src/tools/pgs_dump
 /src/tools/vc1parser
 /src/tools/xyzvc_dump
-/tests/data
 /tests/unit/common/common
 /tests/unit/gui/gui
 /tests/unit/merge/merge
