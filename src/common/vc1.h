@@ -18,6 +18,8 @@
 
 #include <deque>
 
+#include "common/frame_clock.h"
+
 #include "common/vc1_fwd.h"
 
 namespace mtx::vc1 {
@@ -178,6 +180,7 @@ protected:
   int64_t m_previous_timestamp;
   int64_t m_num_timestamps;
   int64_t m_num_repeated_fields;
+  mtx::frame_clock_c m_clock;   // in fields
 
   bool m_default_duration_forced;
   int64_t m_default_duration;
