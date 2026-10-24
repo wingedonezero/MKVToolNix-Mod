@@ -1,7 +1,9 @@
 # The libraries in libs/: each with its own build system, out of tree, static
 # only, installed into build/<mode>/prefix/ (include/, lib/, lib/pkgconfig/).
 # libs/ itself is never written to. A library is rebuilt when one of its files,
-# its arguments or a library it is built on changes.
+# its arguments or a library it is built on changes. Nothing is downloaded:
+# CMake's FetchContent is switched off (libebml would fetch utf8-cpp when it
+# is not installed yet, so it is built after ours).
 
 LIB_TYPE := $(if $(filter release,$(MODE)),Release,Debug)
 STAMPS   := $(BUILD)/libs/stamps
@@ -9,7 +11,7 @@ STAMPS   := $(BUILD)/libs/stamps
 CMAKE_COMMON := -G Ninja -DCMAKE_BUILD_TYPE=$(LIB_TYPE) -DBUILD_SHARED_LIBS=OFF \
                 -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_PREFIX=$(PREFIX) \
                 -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_PREFIX_PATH=$(PREFIX) \
-                -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF -DBUILD_TESTING=OFF
+                -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF -DBUILD_TESTING=OFF -DFETCHCONTENT_FULLY_DISCONNECTED=ON
 
 # $(call cmake_lib,name,extra arguments,libraries it is built on)
 define cmake_lib
@@ -24,7 +26,7 @@ $(STAMPS)/$(1): $(BUILD)/libs/$(1)/args $$(call src_files,$(LIBS)/$(1)) $(foreac
 	touch $$@
 endef
 
-$(eval $(call cmake_lib,libebml,,))
+$(eval $(call cmake_lib,libebml,,utf8-cpp))
 $(eval $(call cmake_lib,libmatroska,,libebml))
 # (no "d" on the debug library's name: MKVToolNix's configure links -lfmt)
 $(eval $(call cmake_lib,fmt,-DFMT_TEST=OFF -DFMT_DOC=OFF -DFMT_INSTALL=ON -DFMT_DEBUG_POSTFIX=,))

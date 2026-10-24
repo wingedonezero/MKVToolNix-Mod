@@ -22,8 +22,12 @@ patterns for later edits.
 
 ## What is changed today
 
-Nothing: every folder is its upstream release byte for byte (git cannot
-store empty folders: zlib's two are not kept).
+Every folder is its upstream release byte for byte (git cannot store empty
+folders: zlib's two are not kept), except:
+
+| Library | Change | Why |
+|---|---|---|
+| `libebml/` | `EBMLConfig.cmake.in`: `find_dependency(utf8cpp)` before its targets are loaded (+5 lines) | built static against an installed utf8-cpp, its `EBML::ebml` target names `utf8cpp::utf8cpp`, which its package file never loaded, so libmatroska's `find_package(EBML)` failed. (Without an installed utf8-cpp, libebml downloads utf8-cpp 3.2.5 from GitHub at build time; the build now builds ours first and switches downloads off.) |
 
 ## The releases
 
