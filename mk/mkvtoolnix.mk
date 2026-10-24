@@ -12,14 +12,15 @@ MTX_TMP   := $(BUILD)/tmp
 mtx-sync:
 	sh $(ROOT)/mk/sync.sh $(ROOT) $(MTX) $(BUILD)/mkvtoolnix-files
 
-# pkg-config for configure: our prefix first, and static (a static library
-# needs the libraries it is built on: FLAC and libvorbis need libogg, ...)
+# pkg-config for configure: only our prefix (the host's .pc files are not
+# seen, so no host copy of one of our libraries can be picked), and static (a
+# static library needs the libraries it is built on: FLAC needs libogg, ...).
+# Qt (qmake6) and Boost are not found through pkg-config.
 PKG_CONFIG_DIRS := $(PREFIX)/lib/pkgconfig:$(PREFIX)/share/pkgconfig
-$(call args_stamp,$(TOOLS)/pkg-config-args,$(PKG_CONFIG_DIRS) --static)
+$(call args_stamp,$(TOOLS)/pkg-config-args,$(PKG_CONFIG_DIRS) libdir --static)
 $(TOOLS)/pkg-config: $(TOOLS)/pkg-config-args
 	@mkdir -p $(dir $@)
-	printf '#!/bin/sh\nPKG_CONFIG_PATH=%s$${PKG_CONFIG_PATH:+:$$PKG_CONFIG_PATH} exec pkg-config --static "$$@"\n' \
-	       '$(PKG_CONFIG_DIRS)' > $@
+	printf '#!/bin/sh\nPKG_CONFIG_LIBDIR=%s PKG_CONFIG_PATH= exec pkg-config --static "$$@"\n' '$(PKG_CONFIG_DIRS)' > $@
 	chmod +x $@
 
 # (no precompiled headers: rake's handed the unit tests one that does not
@@ -31,15 +32,15 @@ MTX_ENV := TMPDIR=$(MTX_TMP) PKG_CONFIG=$(TOOLS)/pkg-config \
 $(call args_stamp,$(BUILD)/mkvtoolnix-args,$(MTX_CONFIGURE) $(MTX_ENV))
 
 # configure: again when configure.ac, the ac/ checks, our arguments or a library
-# change; then the check that every library came from our prefix
+# change. Every library is required and seen only in our prefix, so configure
+# stops with a message instead of building without one or with another copy.
 $(MTX)/build-config: $(BUILD)/mkvtoolnix-args $(TOOLS)/pkg-config $(LIB_STAMPS) \
-                     $(ROOT)/configure.ac $(wildcard $(ROOT)/ac/*.m4) $(ROOT)/build-config.in $(ROOT)/mk/check-config.sh \
+                     $(ROOT)/configure.ac $(wildcard $(ROOT)/ac/*.m4) $(ROOT)/build-config.in \
                      | mtx-sync
 	@echo "== mkvtoolnix: configure"
 	@mkdir -p $(MTX_TMP)
 	cd $(MTX) && ./autogen.sh > $(BUILD)/autogen.log 2>&1
 	cd $(MTX) && $(MTX_ENV) ./configure $(MTX_CONFIGURE) > $(BUILD)/configure.log
-	sh $(ROOT)/mk/check-config.sh $(MTX)/build-config $(PREFIX)
 	touch $@
 
 # rake decides itself what to rebuild
