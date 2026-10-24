@@ -253,16 +253,11 @@ parse_frame_header(const uint8_t *buf,
       fh.frame_type = 0 == type ? FRAME_TYPE_I : FRAME_TYPE_P;
 
     } else {
-      auto type = bc.get_unary(false, 4);
-      if (type >= 4) {
-        fh.frame_type = FRAME_TYPE_P_SKIPPED;
-        memcpy(&frame_header, &fh, sizeof(frame_header_t));
-
-        return true;
-      }
-
-      static frame_type_e s_type_map[4] = { FRAME_TYPE_P, FRAME_TYPE_B, FRAME_TYPE_I, FRAME_TYPE_BI };
-      fh.frame_type = s_type_map[type];
+      // A skipped picture's header carries TFCNTR and the pulldown fields
+      // like any other (SMPTE 421M, the skipped picture layer): a skipped
+      // picture may repeat a field or frames too.
+      static frame_type_e s_type_map[5] = { FRAME_TYPE_P, FRAME_TYPE_B, FRAME_TYPE_I, FRAME_TYPE_BI, FRAME_TYPE_P_SKIPPED };
+      fh.frame_type = s_type_map[bc.get_unary(false, 4)];
     }
 
     if (seqhdr.tf_counter_flag)
